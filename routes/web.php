@@ -1,0 +1,74 @@
+<?php
+
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\OtpVerificationController;
+use App\Http\Controllers\OutletController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\DashboardController;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+
+Route::get('/', function () {
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
+});
+
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Attendance routes
+    Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+    Route::post('/attendance/checkin', [AttendanceController::class, 'checkin'])->middleware('throttle:5,1')->name('attendance.checkin');
+    Route::post('/attendance/checkout', [AttendanceController::class, 'checkout'])->middleware('throttle:10,1')->name('attendance.checkout');
+    Route::get('/attendance/status', [AttendanceController::class, 'status'])->name('attendance.status');
+    
+    // Offline attendance routes
+    Route::post('/attendance/offline/store', [AttendanceController::class, 'storeOffline'])->name('attendance.offline.store');
+    Route::post('/attendance/offline/sync', [AttendanceController::class, 'syncOffline'])->name('attendance.offline.sync');
+    Route::get('/attendance/offline/stats', [AttendanceController::class, 'offlineStats'])->name('attendance.offline.stats');
+    Route::delete('/attendance/offline/clear', [AttendanceController::class, 'clearOffline'])->name('attendance.offline.clear');
+});
+
+// Owner routes
+Route::middleware(['auth', 'owner'])->group(function () {
+    Route::post('/outlets/{outlet}/employees', [EmployeeController::class, 'store'])->name('outlets.employees.store');
+    Route::resource('outlets', OutletController::class);
+    
+    // Employee Management routes
+    Route::get('/employees', [App\Http\Controllers\EmployeeManagementController::class, 'index'])->name('employees.index');
+    Route::get('/employees/create', [App\Http\Controllers\EmployeeManagementController::class, 'create'])->name('employees.create');
+    Route::post('/employees', [App\Http\Controllers\EmployeeManagementController::class, 'store'])->name('employees.store');
+    Route::get('/employees/{employee}', [App\Http\Controllers\EmployeeManagementController::class, 'show'])->name('employees.show');
+    Route::get('/employees/{employee}/edit', [App\Http\Controllers\EmployeeManagementController::class, 'edit'])->name('employees.edit');
+    Route::put('/employees/{employee}', [App\Http\Controllers\EmployeeManagementController::class, 'update'])->name('employees.update');
+    Route::delete('/employees/{employee}', [App\Http\Controllers\EmployeeManagementController::class, 'destroy'])->name('employees.destroy');
+    Route::post('/employees/{employee}/resend-email', [App\Http\Controllers\EmployeeManagementController::class, 'resendEmail'])->name('employees.resend-email');
+    Route::post('/employees/bulk-assign', [App\Http\Controllers\EmployeeManagementController::class, 'bulkAssign'])->name('employees.bulk-assign');
+    
+    // Reports routes
+    Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export', [App\Http\Controllers\ReportController::class, 'export'])->name('reports.export');
+    Route::get('/reports/summary', [App\Http\Controllers\ReportController::class, 'summary'])->name('reports.summary');
+});
+
+// OTP Verification routes
+Route::middleware('guest')->prefix('verification')->group(function () {
+    Route::get('/notice', [OtpVerificationController::class, 'show'])->name('verification.notice');
+    Route::post('/send', [OtpVerificationController::class, 'send'])->middleware('throttle:5,1')->name('verification.send');
+    Route::post('/verify', [OtpVerificationController::class, 'verify'])->name('verification.verify');
+});
+
+
+require __DIR__.'/auth.php';
