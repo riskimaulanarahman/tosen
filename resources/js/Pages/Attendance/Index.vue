@@ -83,10 +83,15 @@ const handleCameraConfirm = async (imageBlob) => {
         });
 
         if (response.data.success) {
+            handleSuccess(
+                cameraAction.value === "checkin"
+                    ? "Check-in berhasil!"
+                    : "Check-out berhasil!"
+            );
             // Reload data
             window.location.reload();
         } else {
-            locationError.value = response.data.message;
+            handleError(new Error(response.data.message));
         }
     } catch (error) {
         console.error("Attendance error:", error);

@@ -148,7 +148,11 @@ const updateMarkerPosition = () => {
 const submit = () => {
     form.post(route("outlets.store"), {
         onSuccess: () => {
+            window.handleSuccess(`Outlet ${form.name} berhasil ditambahkan.`);
             form.reset();
+        },
+        onError: (errors) => {
+            window.handleError(errors);
         },
     });
 };

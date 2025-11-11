@@ -16,7 +16,14 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route("employees.store"));
+    form.post(route("employees.store"), {
+        onSuccess: () => {
+            handleSuccess("Karyawan berhasil ditambahkan!");
+        },
+        onError: (errors) => {
+            handleError(errors);
+        },
+    });
 };
 </script>
 

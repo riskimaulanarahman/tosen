@@ -5,6 +5,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
 import Button from "@/Components/ui/Button.vue";
 import CameraModal from "@/Components/CameraModal.vue";
+import MapModal from "@/Components/MapModal.vue";
 
 const page = usePage();
 
@@ -30,6 +31,30 @@ const showCameraModal = ref(false);
 const cameraAction = ref(""); // 'checkin' or 'checkout'
 const capturedSelfie = ref(null);
 const isProcessing = ref(false);
+
+// Map modal states
+const showMapModal = ref(false);
+const selectedOutlet = ref(null);
+
+// Open map modal
+const openMapModal = (outletData) => {
+    selectedOutlet.value = outletData;
+    showMapModal.value = true;
+};
+
+// Close map modal
+const closeMapModal = () => {
+    showMapModal.value = false;
+    selectedOutlet.value = null;
+};
+
+// Generate Google Maps URL
+const getGoogleMapsUrl = (outletData) => {
+    if (!outletData.latitude || !outletData.longitude) {
+        return "#";
+    }
+    return `https://www.google.com/maps?q=${outletData.latitude},${outletData.longitude}`;
+};
 
 const getLocation = () => {
     return new Promise((resolve, reject) => {
@@ -75,9 +100,9 @@ const handleCameraCapture = async (imageData) => {
     message.value = "";
 
     if (!cameraAction.value) {
-        message.value =
-            "❌ Aksi belum dipilih. Klik tombol CHECK IN atau CHECK OUT terlebih dahulu.";
-        messageType.value = "error";
+        handleError(
+            "Aksi belum dipilih. Klik tombol CHECK IN atau CHECK OUT terlebih dahulu."
+        );
         isProcessing.value = false;
         return;
     }
@@ -121,44 +146,40 @@ const handleCameraCapture = async (imageData) => {
         }
 
         if (response.ok) {
+            let successMessage = "";
             if (currentAction === "checkin") {
-                message.value = `✅ Berhasil check-in di ${data.outlet_name}! Jarak: ${data.distance}m`;
+                successMessage = `Berhasil check-in di ${data.outlet_name}! Jarak: ${data.distance}m`;
             } else {
-                message.value = `✅ Berhasil check-out! Durasi kerja: ${
+                successMessage = `Berhasil check-out! Durasi kerja: ${
                     data.work_duration?.formatted || "N/A"
                 } jam`;
             }
-            messageType.value = "success";
+            handleSuccess(successMessage);
             showCameraModal.value = false;
             cameraAction.value = "";
             capturedSelfie.value = null;
             await fetchAttendanceStatus();
         } else {
-            let errorMessage =
-                data?.message || "Terjadi kesalahan pada server.";
-            if (data?.errors) {
-                const firstError = Object.values(data.errors)[0];
-                if (Array.isArray(firstError) && firstError.length > 0) {
-                    errorMessage = firstError[0];
-                }
-            }
-            message.value = `❌ ${errorMessage}`;
-            messageType.value = "error";
+            // Handle validation errors with global error handler
+            const error = new Error(
+                data?.message || "Terjadi kesalahan pada server."
+            );
+            error.response = { status: response.status, data: data };
+            throw error;
         }
     } catch (error) {
-        console.error(`${currentAction} error:`, error);
         const errorMessage = error?.message?.toLowerCase() || "";
         if (
             errorMessage.includes("lokasi") ||
             errorMessage.includes("location")
         ) {
-            message.value = `❌ Tidak bisa mendapatkan lokasi Anda. Silakan aktifkan layanan lokasi.`;
+            handleError(
+                error,
+                "Tidak bisa mendapatkan lokasi Anda. Silakan aktifkan layanan lokasi."
+            );
         } else {
-            message.value = `❌ Error saat ${
-                currentAction === "checkin" ? "check-in" : "check-out"
-            }. Silakan coba lagi.`;
+            handleError(error);
         }
-        messageType.value = "error";
     } finally {
         isProcessing.value = false;
     }
@@ -614,18 +635,75 @@ onMounted(() => {
                                 {{ outlet.name }}
                             </div>
                         </div>
-                        <div>
+                        <!-- <div>
                             <div class="text-sm text-muted">Alamat</div>
                             <div class="text-text text-sm">
                                 {{ outlet.address }}
                             </div>
-                        </div>
+                        </div> -->
                         <div>
                             <div class="text-sm text-muted">
                                 Radius Geofence
                             </div>
                             <div class="text-text font-medium">
                                 {{ outlet.radius }} meter
+                            </div>
+                        </div>
+                        <div v-if="outlet.latitude && outlet.longitude">
+                            <div class="text-sm text-muted mb-2">
+                                Lokasi & Peta
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <!-- Map Modal Link -->
+                                <button
+                                    @click="openMapModal(outlet)"
+                                    class="inline-flex items-center px-3 py-2 text-xs text-primary hover:text-primary-400 transition-colors bg-surface-2 hover:bg-surface-3 rounded-none"
+                                    title="Lihat peta"
+                                >
+                                    <svg
+                                        class="w-3 h-3 mr-1"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                        />
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                        />
+                                    </svg>
+                                    Lihat Peta
+                                </button>
+                                <!-- Google Maps Button -->
+                                <a
+                                    :href="getGoogleMapsUrl(outlet)"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center px-3 py-2 text-xs text-blue-600 hover:text-blue-700 transition-colors bg-surface-2 hover:bg-surface-3 rounded-none"
+                                    title="Buka di Google Maps"
+                                >
+                                    <svg
+                                        class="w-3 h-3 mr-1"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                        />
+                                    </svg>
+                                    Google Maps
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -853,6 +931,13 @@ onMounted(() => {
             "
             @confirm="handleCameraConfirm"
             @close="handleCameraClose"
+        />
+
+        <!-- Map Modal -->
+        <MapModal
+            :show="showMapModal"
+            :outlet="selectedOutlet"
+            @close="closeMapModal"
         />
     </AuthenticatedLayout>
 </template>

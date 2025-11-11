@@ -62,6 +62,17 @@ const viewSummary = () => {
     window.location.href = route("reports.summary") + "?" + params.toString();
 };
 
+const viewPivot = () => {
+    const params = new URLSearchParams();
+    Object.keys(searchParams.value).forEach((key) => {
+        if (searchParams.value[key]) {
+            params.append(key, searchParams.value[key]);
+        }
+    });
+
+    window.location.href = route("reports.pivot") + "?" + params.toString();
+};
+
 const formatDate = (date) => {
     return new Date(date).toLocaleDateString("id-ID", {
         year: "numeric",
@@ -130,6 +141,22 @@ const getStatusText = (status) => {
                     <p class="text-muted">Analisis data absensi karyawan</p>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <Button @click="viewPivot" variant="secondary">
+                        <svg
+                            class="w-4 h-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
+                        </svg>
+                        Pivot Table
+                    </Button>
                     <Button @click="viewSummary" variant="secondary">
                         <svg
                             class="w-4 h-4 mr-2"

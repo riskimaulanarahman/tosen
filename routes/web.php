@@ -60,7 +60,9 @@ Route::middleware(['auth', 'owner'])->group(function () {
     
     // Reports routes
     Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/pivot', [App\Http\Controllers\ReportController::class, 'pivot'])->name('reports.pivot');
     Route::get('/reports/export', [App\Http\Controllers\ReportController::class, 'export'])->name('reports.export');
+    Route::get('/reports/export-pivot', [App\Http\Controllers\ReportController::class, 'exportPivot'])->name('reports.export.pivot');
     Route::get('/reports/summary', [App\Http\Controllers\ReportController::class, 'summary'])->name('reports.summary');
 });
 

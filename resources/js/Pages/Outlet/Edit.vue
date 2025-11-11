@@ -166,7 +166,10 @@ const updateMarkerPosition = () => {
 const submit = () => {
     form.put(route("outlets.update", props.outlet.id), {
         onSuccess: () => {
-            // Success message will be handled by redirect
+            window.handleSuccess(`Outlet ${form.name} berhasil diperbarui.`);
+        },
+        onError: (errors) => {
+            window.handleError(errors);
         },
     });
 };

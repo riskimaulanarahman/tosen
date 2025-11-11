@@ -41,4 +41,34 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that user is an owner.
+     */
+    public function owner(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'owner',
+        ]);
+    }
+
+    /**
+     * Indicate that user is an employee.
+     */
+    public function employee(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'employee',
+        ]);
+    }
+
+    /**
+     * Create user for a specific outlet.
+     */
+    public function forOutlet($outletId): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'outlet_id' => $outletId,
+        ]);
+    }
 }

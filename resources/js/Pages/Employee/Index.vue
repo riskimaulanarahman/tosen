@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { Head, Link, useForm } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
@@ -8,11 +8,11 @@ import Table from "@/Components/ui/Table.vue";
 import Modal from "@/Components/Modal.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import InputError from "@/Components/InputError.vue";
-import Swal from "sweetalert2";
 
 const props = defineProps({
     employees: Object,
     outlets: Array,
+    errors: Object,
 });
 
 const search = ref("");
@@ -60,36 +60,28 @@ const toggleAll = () => {
 const bulkAssign = () => {
     const selectedCount = selectedEmployees.value.length;
 
-    Swal.fire({
-        title: "Assign ke Outlet?",
-        html: `Assign <strong>${selectedCount} karyawan</strong> ke outlet yang dipilih?`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonColor: "#3b82f6",
-        cancelButtonColor: "#6b7280",
-        confirmButtonText: "Ya, Assign!",
-        cancelButtonText: "Batal",
-        reverseButtons: true,
-    }).then((result) => {
-        if (result.isConfirmed) {
-            bulkForm.employee_ids = selectedEmployees.value;
-            bulkForm.post(route("employees.bulk-assign"), {
-                onSuccess: () => {
-                    selectedEmployees.value = [];
-                    bulkForm.reset();
-                    Swal.fire({
-                        title: "Berhasil!",
-                        text: `${selectedCount} karyawan berhasil diassign ke outlet`,
-                        icon: "success",
-                        timer: 3000,
-                        showConfirmButton: false,
-                        toast: true,
-                        position: "top-end",
-                    });
-                },
-            });
-        }
-    });
+    const confirmed = window.handleConfirm(
+        `Assign <strong>${selectedCount} karyawan</strong> ke outlet yang dipilih?`,
+        "Assign ke Outlet?",
+        "Ya, Assign!",
+        "Batal"
+    );
+
+    if (confirmed) {
+        bulkForm.employee_ids = selectedEmployees.value;
+        bulkForm.post(route("employees.bulk-assign"), {
+            onSuccess: () => {
+                selectedEmployees.value = [];
+                bulkForm.reset();
+                window.handleSuccess(
+                    `${selectedCount} karyawan berhasil diassign ke outlet`
+                );
+            },
+            onError: (errors) => {
+                window.handleError(errors);
+            },
+        });
+    }
 };
 
 const openTransferModal = (employee) => {
@@ -126,67 +118,60 @@ const submitTransfer = () => {
         {
             preserveScroll: true,
             onSuccess: () => {
-                Swal.fire({
-                    title: "Berhasil!",
-                    text: `${employeeName} berhasil dipindahkan ke outlet baru.`,
-                    icon: "success",
-                    timer: 3000,
-                    showConfirmButton: false,
-                    toast: true,
-                    position: "top-end",
-                });
+                window.handleSuccess(
+                    `${employeeName} berhasil dipindahkan ke outlet baru.`
+                );
                 closeTransferModal();
+            },
+            onError: (errors) => {
+                window.handleError(errors);
             },
         }
     );
 };
 
 const deleteEmployee = (employee) => {
-    Swal.fire({
-        title: "Hapus Karyawan?",
-        html: `Apakah Anda yakin ingin menghapus karyawan <strong>${employee.name}</strong>?<br><small class="text-text-3">Email: ${employee.email}</small>`,
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#ef4444",
-        cancelButtonColor: "#6b7280",
-        confirmButtonText: "Ya, Hapus!",
-        cancelButtonText: "Batal",
-        reverseButtons: true,
-    }).then((result) => {
-        if (result.isConfirmed) {
-            useForm({}).delete(route("employees.destroy", employee.id));
-        }
-    });
+    const confirmed = window.handleConfirm(
+        `Apakah Anda yakin ingin menghapus karyawan <strong>${employee.name}</strong>?<br><small class="text-text-3">Email: ${employee.email}</small>`,
+        "Hapus Karyawan?",
+        "Ya, Hapus!",
+        "Batal"
+    );
+
+    if (confirmed) {
+        useForm({}).delete(route("employees.destroy", employee.id), {
+            onSuccess: () => {
+                window.handleSuccess(
+                    `Karyawan ${employee.name} berhasil dihapus.`
+                );
+            },
+            onError: (errors) => {
+                window.handleError(errors);
+            },
+        });
+    }
 };
 
 const resendEmail = (employee) => {
-    Swal.fire({
-        title: "Kirim Ulang Email?",
-        html: `Kirim ulang email verifikasi ke:<br><strong>${employee.email}</strong><br><small class="text-text-3">Password dan OTP baru akan dibuat</small>`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonColor: "#10b981",
-        cancelButtonColor: "#6b7280",
-        confirmButtonText: "Ya, Kirim!",
-        cancelButtonText: "Batal",
-        reverseButtons: true,
-    }).then((result) => {
-        if (result.isConfirmed) {
-            useForm({}).post(route("employees.resend-email", employee.id), {
-                onSuccess: () => {
-                    Swal.fire({
-                        title: "Berhasil!",
-                        text: `Email verifikasi telah dikirim ke ${employee.email}`,
-                        icon: "success",
-                        timer: 3000,
-                        showConfirmButton: false,
-                        toast: true,
-                        position: "top-end",
-                    });
-                },
-            });
-        }
-    });
+    const confirmed = window.handleConfirm(
+        `Kirim ulang email verifikasi ke:<br><strong>${employee.email}</strong><br><small class="text-text-3">Password dan OTP baru akan dibuat</small>`,
+        "Kirim Ulang Email?",
+        "Ya, Kirim!",
+        "Batal"
+    );
+
+    if (confirmed) {
+        useForm({}).post(route("employees.resend-email", employee.id), {
+            onSuccess: () => {
+                window.handleSuccess(
+                    `Email verifikasi telah dikirim ke ${employee.email}`
+                );
+            },
+            onError: (errors) => {
+                window.handleError(errors);
+            },
+        });
+    }
 };
 
 const formatDate = (date) => {
@@ -196,6 +181,13 @@ const formatDate = (date) => {
         day: "numeric",
     });
 };
+
+// Check for error props on mount
+onMounted(() => {
+    if (props.errors && Object.keys(props.errors).length > 0) {
+        window.handleError(props.errors);
+    }
+});
 </script>
 
 <template>

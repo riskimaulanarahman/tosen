@@ -5,12 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Outlet;
 use App\Models\User;
 use App\Models\Attendance;
+use App\Services\PivotTableService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class ReportController extends Controller
 {
+    protected $pivotTableService;
+
+    public function __construct(PivotTableService $pivotTableService)
+    {
+        $this->pivotTableService = $pivotTableService;
+    }
+
     /**
      * Display a listing of the reports.
      */
@@ -213,5 +221,72 @@ class ReportController extends Controller
                 'date_to' => $dateTo->format('Y-m-d'),
             ],
         ]);
+    }
+
+    /**
+     * Display pivot table attendance report
+     */
+    public function pivot(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Get filters
+        $selectedOutlet = $request->get('outlet_id');
+        $dateFrom = $request->get('date_from') ? Carbon::parse($request->get('date_from')) : Carbon::now()->startOfMonth();
+        $dateTo = $request->get('date_to') ? Carbon::parse($request->get('date_to')) : Carbon::now()->endOfMonth();
+
+        // Get owner's outlets
+        $outlets = Outlet::where('owner_id', $user->id)
+            ->orderBy('name')
+            ->get();
+
+        // Generate pivot table data
+        $pivotData = $this->pivotTableService->generatePivotTable(
+            $user->id,
+            $dateFrom->format('Y-m-d'),
+            $dateTo->format('Y-m-d'),
+            $selectedOutlet
+        );
+
+        $statusConfig = $this->pivotTableService->getStatusConfig();
+
+        return inertia('Reports/Pivot', [
+            'pivotData' => $pivotData,
+            'statusConfig' => $statusConfig,
+            'outlets' => $outlets,
+            'filters' => [
+                'outlet_id' => $selectedOutlet,
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+            ],
+        ]);
+    }
+
+    /**
+     * Export pivot table to CSV
+     */
+    public function exportPivot(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Get filters
+        $selectedOutlet = $request->get('outlet_id');
+        $dateFrom = $request->get('date_from') ? Carbon::parse($request->get('date_from')) : Carbon::now()->startOfMonth();
+        $dateTo = $request->get('date_to') ? Carbon::parse($request->get('date_to')) : Carbon::now()->endOfMonth();
+
+        // Generate pivot table data
+        $pivotData = $this->pivotTableService->generatePivotTable(
+            $user->id,
+            $dateFrom->format('Y-m-d'),
+            $dateTo->format('Y-m-d'),
+            $selectedOutlet
+        );
+
+        $statusConfig = $this->pivotTableService->getStatusConfig();
+        $exportData = $this->pivotTableService->exportToCsv($pivotData, $statusConfig);
+
+        return response($exportData['content'])
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', 'attachment; filename="' . $exportData['filename'] . '"');
     }
 }

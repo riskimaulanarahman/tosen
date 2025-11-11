@@ -7,6 +7,7 @@ import Card from "@/Components/ui/Card.vue";
 import Button from "@/Components/ui/Button.vue";
 import Breadcrumb from "@/Components/Breadcrumb.vue";
 import OperationalStatus from "@/Components/OperationalStatus.vue";
+import MapModal from "@/Components/MapModal.vue";
 
 const page = usePage();
 const props = defineProps({
@@ -39,18 +40,51 @@ const clearSearch = () => {
     applySearch();
 };
 
-const deleteOutlet = (outlet) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus outlet "${outlet.name}"?`)) {
+const deleteOutlet = async (outlet) => {
+    const confirmed = await handleConfirm(
+        `Apakah Anda yakin ingin menghapus outlet "${outlet.name}"?`,
+        "Hapus Outlet",
+        "Ya, Hapus",
+        "Batal"
+    );
+
+    if (confirmed) {
         router.delete(route("outlets.destroy", outlet.id), {
             onSuccess: () => {
-                successMessage.value = "Outlet berhasil dihapus.";
+                handleSuccess("Outlet berhasil dihapus.");
             },
             onError: (errors) => {
-                errorMessage.value =
-                    errors.cannot_delete || "Gagal menghapus outlet.";
+                handleError(
+                    errors,
+                    errors.cannot_delete || "Gagal menghapus outlet."
+                );
             },
         });
     }
+};
+
+// Map modal state
+const showMapModal = ref(false);
+const selectedOutlet = ref(null);
+
+// Open map modal
+const openMapModal = (outlet) => {
+    selectedOutlet.value = outlet;
+    showMapModal.value = true;
+};
+
+// Close map modal
+const closeMapModal = () => {
+    showMapModal.value = false;
+    selectedOutlet.value = null;
+};
+
+// Generate Google Maps URL
+const getGoogleMapsUrl = (outlet) => {
+    if (!outlet.latitude || !outlet.longitude) {
+        return "#";
+    }
+    return `https://www.google.com/maps?q=${outlet.latitude},${outlet.longitude}`;
 };
 
 // Breadcrumb items
@@ -245,9 +279,57 @@ const breadcrumbItems = [
                                         >
                                             {{ outlet.name }}
                                         </div>
-                                        <div class="text-sm text-muted">
-                                            Lat: {{ outlet.latitude }}, Lng:
-                                            {{ outlet.longitude }}
+                                        <div class="flex flex-col gap-1 mt-1">
+                                            <!-- Map Modal Link -->
+                                            <button
+                                                @click="openMapModal(outlet)"
+                                                class="inline-flex items-center text-xs text-primary hover:text-primary-400 transition-colors"
+                                                title="Lihat peta"
+                                            >
+                                                <svg
+                                                    class="w-3 h-3 mr-1"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                    />
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                                    />
+                                                </svg>
+                                                Lihat Peta
+                                            </button>
+                                            <!-- Google Maps Button -->
+                                            <a
+                                                :href="getGoogleMapsUrl(outlet)"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="inline-flex items-center text-xs text-blue-600 hover:text-blue-700 transition-colors"
+                                                title="Buka di Google Maps"
+                                            >
+                                                <svg
+                                                    class="w-3 h-3 mr-1"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                                    />
+                                                </svg>
+                                                Google Maps
+                                            </a>
                                         </div>
                                     </div>
                                 </td>
@@ -381,6 +463,13 @@ const breadcrumbItems = [
                 </div>
             </Card>
         </div>
+
+        <!-- Map Modal -->
+        <MapModal
+            :show="showMapModal"
+            :outlet="selectedOutlet"
+            @close="closeMapModal"
+        />
     </AuthenticatedLayout>
 </template>
 

@@ -20,6 +20,12 @@ const form = useForm({
 
 const submit = () => {
     form.put(route("employees.update", props.employee.id), {
+        onSuccess: () => {
+            window.handleSuccess(`Karyawan ${form.name} berhasil diperbarui.`);
+        },
+        onError: (errors) => {
+            window.handleError(errors);
+        },
         onFinish: () => form.reset("password", "password_confirmation"),
     });
 };

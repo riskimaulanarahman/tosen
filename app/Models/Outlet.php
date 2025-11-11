@@ -76,8 +76,8 @@ class Outlet extends Model
             'grace_period_minutes' => 'integer',
             'overtime_threshold_minutes' => 'integer',
             'work_days' => 'array',
-            'latitude' => 'decimal:8',
-            'longitude' => 'decimal:8',
+            'latitude' => 'decimal:6',
+            'longitude' => 'decimal:6',
             'radius' => 'integer',
         ];
     }
