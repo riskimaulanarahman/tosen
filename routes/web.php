@@ -54,6 +54,7 @@ Route::middleware(['auth', 'owner'])->group(function () {
     Route::get('/employees/{employee}/edit', [App\Http\Controllers\EmployeeManagementController::class, 'edit'])->name('employees.edit');
     Route::put('/employees/{employee}', [App\Http\Controllers\EmployeeManagementController::class, 'update'])->name('employees.update');
     Route::delete('/employees/{employee}', [App\Http\Controllers\EmployeeManagementController::class, 'destroy'])->name('employees.destroy');
+    Route::post('/employees/{employee}/transfer', [App\Http\Controllers\EmployeeManagementController::class, 'transfer'])->name('employees.transfer');
     Route::post('/employees/{employee}/resend-email', [App\Http\Controllers\EmployeeManagementController::class, 'resendEmail'])->name('employees.resend-email');
     Route::post('/employees/bulk-assign', [App\Http\Controllers\EmployeeManagementController::class, 'bulkAssign'])->name('employees.bulk-assign');
     
@@ -71,4 +72,7 @@ Route::middleware('guest')->prefix('verification')->group(function () {
 });
 
 
+require __DIR__.'/leave.php';
+require __DIR__.'/shift.php';
+require __DIR__.'/payroll.php';
 require __DIR__.'/auth.php';

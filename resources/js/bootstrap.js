@@ -1,17 +1,43 @@
 import axios from "axios";
+import { router } from "@inertiajs/vue3";
 window.axios = axios;
 
 window.axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
 
-// Add CSRF token to all axios requests
-const token = document.head.querySelector('meta[name="csrf-token"]');
-if (token) {
-    window.axios.defaults.headers.common["X-CSRF-TOKEN"] = token.content;
+const syncCsrfToken = (token) => {
+    if (!token) {
+        return;
+    }
+
+    window.axios.defaults.headers.common["X-CSRF-TOKEN"] = token;
+
+    let meta = document.head.querySelector('meta[name="csrf-token"]');
+    if (!meta) {
+        meta = document.createElement("meta");
+        meta.name = "csrf-token";
+        document.head.appendChild(meta);
+    }
+
+    meta.setAttribute("content", token);
+};
+
+// Seed the CSRF token from the server-rendered meta tag
+const initialToken = document.head.querySelector('meta[name="csrf-token"]');
+if (initialToken?.content) {
+    syncCsrfToken(initialToken.content);
 } else {
     console.error(
         "CSRF token not found: https://laravel.com/docs/csrf#csrf-x-csrf-token"
     );
 }
+
+// Keep the CSRF token in sync after every Inertia navigation
+router.on("navigate", (event) => {
+    const token = event.detail?.page?.props?.csrf_token;
+    if (token) {
+        syncCsrfToken(token);
+    }
+});
 
 // Add response interceptor to handle CSRF token expiration
 window.axios.interceptors.response.use(

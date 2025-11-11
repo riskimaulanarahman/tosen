@@ -15,11 +15,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call([
+            LeaveTypeSeeder::class,
+            ShiftSeeder::class,
+        ]);
 
+        // Create owner user for testing
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            'name' => 'Owner User',
+            'email' => 'owner@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        // Create test employees
+        User::factory(5)->create([
+            'name' => 'Test Employee',
+            'email' => 'employee@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'employee',
+            'email_verified_at' => now(),
         ]);
     }
 }

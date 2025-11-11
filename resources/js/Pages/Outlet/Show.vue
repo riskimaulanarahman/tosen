@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, watch, nextTick } from "vue";
 import { Head, Link, usePage } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
@@ -7,6 +7,8 @@ import Button from "@/Components/ui/Button.vue";
 import Breadcrumb from "@/Components/Breadcrumb.vue";
 import AddEmployeeModal from "@/Components/AddEmployeeModal.vue";
 import OperationalStatus from "@/Components/OperationalStatus.vue";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const props = defineProps({
     outlet: Object,
@@ -74,6 +76,69 @@ const breadcrumbItems = [
     { name: "Manajemen Outlet", href: route("outlets.index") },
     { name: props.outlet.name },
 ];
+
+const mapRef = ref(null);
+let mapInstance = null;
+let markerInstance = null;
+let circleInstance = null;
+
+const initMap = () => {
+    if (!mapRef.value) return;
+
+    const lat = parseFloat(props.outlet.latitude);
+    const lng = parseFloat(props.outlet.longitude);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+    if (!mapInstance) {
+        mapInstance = L.map(mapRef.value, { zoomControl: true }).setView(
+            [lat, lng],
+            15
+        );
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution:
+                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(mapInstance);
+    } else {
+        mapInstance.setView([lat, lng], 15);
+    }
+
+    if (markerInstance) {
+        markerInstance.setLatLng([lat, lng]);
+    } else {
+        markerInstance = L.marker([lat, lng]).addTo(mapInstance);
+    }
+
+    if (circleInstance) {
+        circleInstance.setLatLng([lat, lng]);
+        circleInstance.setRadius(props.outlet.radius || 0);
+    } else if (props.outlet.radius) {
+        circleInstance = L.circle([lat, lng], {
+            radius: props.outlet.radius,
+            color: "#2563eb",
+            fillColor: "#3b82f6",
+            fillOpacity: 0.15,
+        }).addTo(mapInstance);
+    }
+
+    if (mapInstance) {
+        nextTick(() => {
+            mapInstance.invalidateSize();
+        });
+    }
+};
+
+onMounted(() => {
+    initMap();
+});
+
+watch(
+    () => [props.outlet.latitude, props.outlet.longitude, props.outlet.radius],
+    () => {
+        initMap();
+    }
+);
 </script>
 
 <template>
@@ -203,6 +268,32 @@ const breadcrumbItems = [
                                     {{ outlet.radius }} meter
                                 </div>
                             </div>
+                        </div>
+                    </Card>
+
+                    <!-- Map -->
+                    <Card>
+                        <h2
+                            class="text-xl font-semibold text-text mb-4"
+                            style="font-family: 'Oswald', sans-serif"
+                        >
+                            Lokasi di Peta
+                        </h2>
+                        <div
+                            v-if="outlet.latitude && outlet.longitude"
+                            class="h-64 rounded-lg overflow-hidden border border-border"
+                        >
+                            <div
+                                ref="mapRef"
+                                class="w-full h-full"
+                                style="min-height: 16rem"
+                            ></div>
+                        </div>
+                        <div
+                            v-else
+                            class="text-sm text-muted text-center border border-dashed border-border rounded-lg p-6"
+                        >
+                            Lokasi belum tersedia untuk outlet ini.
                         </div>
                     </Card>
 

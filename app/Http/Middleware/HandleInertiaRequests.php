@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'appName' => config('app.name', 'Absensi Management'),
             'appUrl' => config('app.url'),
+            'csrf_token' => csrf_token(),
         ];
     }
 }

@@ -207,6 +207,49 @@ class EmployeeManagementController extends Controller
     }
 
     /**
+     * Transfer employee to another outlet.
+     */
+    public function transfer(Request $request, User $employee)
+    {
+        $user = Auth::user();
+
+        // Ensure owner can only transfer employees from their outlets
+        if (!$employee->outlet || $employee->outlet->owner_id !== $user->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'outlet_id' => [
+                'required',
+                'integer',
+                Rule::exists('outlets', 'id')->where(function ($query) use ($user) {
+                    $query->where('owner_id', $user->id);
+                }),
+            ],
+        ], [
+            'outlet_id.exists' => 'Selected outlet is invalid.',
+        ]);
+
+        if ((int) $employee->outlet_id === (int) $validated['outlet_id']) {
+            return back()->withErrors([
+                'outlet_id' => 'Employee is already assigned to the selected outlet.',
+            ]);
+        }
+
+        $previousOutlet = $employee->outlet ? $employee->outlet->name : '-';
+        $newOutlet = Outlet::find($validated['outlet_id']);
+
+        $employee->update([
+            'outlet_id' => $validated['outlet_id'],
+        ]);
+
+        return back()->with(
+            'success',
+            "Employee {$employee->name} transferred from {$previousOutlet} to {$newOutlet->name}."
+        );
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(User $employee)

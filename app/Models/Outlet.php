@@ -190,26 +190,43 @@ class Outlet extends Model
     public function getTimeUntilNextOperational(): string
     {
         $nextOperational = $this->getNextOperationalTime();
-        
+
         if (!$nextOperational) {
             return 'No operational hours set';
         }
 
         $now = now()->setTimezone($this->timezone ?? 'Asia/Jakarta');
-        
-        if ($nextOperational->isSameDay($now)) {
-            $minutes = $now->diffInMinutes($nextOperational);
-            return $minutes > 0 ? "{$minutes} minutes" : 'Now';
+        $secondsUntilNext = $now->diffInSeconds($nextOperational);
+
+        if ($secondsUntilNext <= 0) {
+            return 'Now';
         }
 
-        $days = $now->diffInDays($nextOperational);
-        $hours = $now->diffInHours($nextOperational) % 24;
-        
+        $days = intdiv($secondsUntilNext, 86400);
+        $secondsUntilNext -= $days * 86400;
+        $hours = intdiv($secondsUntilNext, 3600);
+        $secondsUntilNext -= $hours * 3600;
+        $minutes = intdiv($secondsUntilNext, 60);
+
+        $parts = [];
+
         if ($days > 0) {
-            return "{$days} day" . ($days > 1 ? 's' : '') . " {$hours} hour" . ($hours > 1 ? 's' : '');
+            $parts[] = "{$days} day" . ($days > 1 ? 's' : '');
         }
-        
-        return "{$hours} hour" . ($hours > 1 ? 's' : '');
+
+        if ($hours > 0) {
+            $parts[] = "{$hours} hour" . ($hours > 1 ? 's' : '');
+        }
+
+        if ($minutes > 0) {
+            $parts[] = "{$minutes} minute" . ($minutes > 1 ? 's' : '');
+        }
+
+        if (empty($parts)) {
+            $parts[] = 'less than a minute';
+        }
+
+        return implode(' ', $parts);
     }
 
     /**

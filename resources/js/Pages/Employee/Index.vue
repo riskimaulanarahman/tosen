@@ -5,6 +5,9 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
 import Button from "@/Components/ui/Button.vue";
 import Table from "@/Components/ui/Table.vue";
+import Modal from "@/Components/Modal.vue";
+import InputLabel from "@/Components/InputLabel.vue";
+import InputError from "@/Components/InputError.vue";
 import Swal from "sweetalert2";
 
 const props = defineProps({
@@ -20,6 +23,13 @@ const bulkForm = useForm({
     employee_ids: [],
     outlet_id: "",
 });
+
+const transferForm = useForm({
+    outlet_id: "",
+});
+
+const showTransferModal = ref(false);
+const transferringEmployee = ref(null);
 
 const columns = [
     { key: "name", label: "Nama" },
@@ -80,6 +90,55 @@ const bulkAssign = () => {
             });
         }
     });
+};
+
+const openTransferModal = (employee) => {
+    transferringEmployee.value = employee;
+    transferForm.outlet_id = "";
+    transferForm.clearErrors();
+    showTransferModal.value = true;
+};
+
+const closeTransferModal = () => {
+    showTransferModal.value = false;
+    transferringEmployee.value = null;
+    transferForm.reset();
+    transferForm.clearErrors();
+};
+
+const submitTransfer = () => {
+    if (!transferringEmployee.value) {
+        return;
+    }
+
+    if (!transferForm.outlet_id) {
+        transferForm.setError(
+            "outlet_id",
+            "Pilih outlet tujuan terlebih dahulu."
+        );
+        return;
+    }
+
+    const employeeName = transferringEmployee.value.name;
+
+    transferForm.post(
+        route("employees.transfer", transferringEmployee.value.id),
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                Swal.fire({
+                    title: "Berhasil!",
+                    text: `${employeeName} berhasil dipindahkan ke outlet baru.`,
+                    icon: "success",
+                    timer: 3000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: "top-end",
+                });
+                closeTransferModal();
+            },
+        }
+    );
 };
 
 const deleteEmployee = (employee) => {
@@ -358,6 +417,26 @@ const formatDate = (date) => {
                                             </svg>
                                         </Link>
                                         <button
+                                            type="button"
+                                            @click="openTransferModal(employee)"
+                                            class="text-orange-400 hover:text-orange-300 transition-colors"
+                                            title="Transfer Outlet"
+                                        >
+                                            <svg
+                                                class="w-4 h-4"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M7 7h10M7 7l3-3m-3 3l3 3M17 17H7m10 0l-3-3m3 3l-3 3"
+                                                />
+                                            </svg>
+                                        </button>
+                                        <button
                                             @click="resendEmail(employee)"
                                             class="text-success hover:text-success/2"
                                             title="Kirim Ulang Email"
@@ -372,7 +451,7 @@ const formatDate = (date) => {
                                                     stroke-linecap="round"
                                                     stroke-linejoin="round"
                                                     stroke-width="2"
-                                                    d="M3 8l7.89 7.89a3 3 0 110-4.24 0l-7.89-7.89a3 3 0 010-4.24 0z"
+                                                    d="M3 8l7.89 7.89a3 3 0 1 1 -4.24 0l-7.89-7.89a3 3 0 1 1 4.24 0z"
                                                 />
                                             </svg>
                                         </button>
@@ -490,6 +569,103 @@ const formatDate = (date) => {
             </Card>
         </div>
     </AuthenticatedLayout>
+
+    <Modal :show="showTransferModal" @close="closeTransferModal">
+        <div
+            class="w-full max-w-lg rounded-2xl border border-border/60 bg-surface-1 p-6 text-text shadow-xl"
+        >
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2
+                        class="text-xl font-bold"
+                        style="font-family: 'Oswald', sans-serif"
+                    >
+                        Transfer Karyawan
+                    </h2>
+                    <p class="text-sm text-text-3">
+                        Pindahkan karyawan ke outlet lain tanpa menghapus data.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    @click="closeTransferModal"
+                    class="text-text-3 hover:text-text"
+                >
+                    <svg
+                        class="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                        />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="mb-4 text-sm text-text-2">
+                Karyawan:
+                <span class="font-semibold text-text">
+                    {{ transferringEmployee?.name || "-" }}
+                </span>
+            </div>
+            <div class="mb-6 text-sm text-text-2">
+                Outlet saat ini:
+                <span class="font-semibold text-text">
+                    {{ transferringEmployee?.outlet?.name || "-" }}
+                </span>
+            </div>
+
+            <form @submit.prevent="submitTransfer" class="space-y-4">
+                <div>
+                    <InputLabel for="transfer-outlet" value="Outlet Tujuan" />
+                    <select
+                        id="transfer-outlet"
+                        v-model="transferForm.outlet_id"
+                        class="mt-1 w-full rounded-none border border-border bg-surface-1 px-3 py-2 text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                        <option value="">Pilih Outlet</option>
+                        <option
+                            v-for="outlet in outlets"
+                            :key="outlet.id"
+                            :value="outlet.id"
+                            :disabled="
+                                outlet.id === transferringEmployee?.outlet_id
+                            "
+                        >
+                            {{ outlet.name }}
+                        </option>
+                    </select>
+                    <InputError
+                        :message="transferForm.errors.outlet_id"
+                        class="mt-2"
+                    />
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        @click="closeTransferModal"
+                        :disabled="transferForm.processing"
+                    >
+                        Batal
+                    </Button>
+                    <Button
+                        type="submit"
+                        :loading="transferForm.processing"
+                        :disabled="transferForm.processing"
+                    >
+                        Transfer Sekarang
+                    </Button>
+                </div>
+            </form>
+        </div>
+    </Modal>
 </template>
 
 <style scoped>
