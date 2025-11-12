@@ -13,6 +13,8 @@ class Outlet extends Model
     protected $appends = [
         'operational_start_time_formatted',
         'operational_end_time_formatted',
+        'operational_status',
+        'formatted_work_days',
     ];
 
     /**
@@ -196,7 +198,7 @@ class Outlet extends Model
         }
 
         $now = now()->setTimezone($this->timezone ?? 'Asia/Jakarta');
-        $secondsUntilNext = $now->diffInSeconds($nextOperational);
+        $secondsUntilNext = (int)$now->diffInSeconds($nextOperational);
 
         if ($secondsUntilNext <= 0) {
             return 'Now';

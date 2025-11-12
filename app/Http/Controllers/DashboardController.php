@@ -105,8 +105,20 @@ class DashboardController extends Controller
             ->take(10)
             ->get();
 
-        // Get user's outlet
+        // Get user's outlet with operational status
         $outlet = $user->outlet;
+        
+        // Add operational status to outlet data
+        if ($outlet) {
+            $outlet->load('owner');
+            $outlet->append([
+                'operational_start_time_formatted',
+                'operational_end_time_formatted',
+                'formatted_operational_hours',
+                'operational_status',
+                'formatted_work_days'
+            ]);
+        }
 
         return inertia('Dashboard', [
             'user' => $user,

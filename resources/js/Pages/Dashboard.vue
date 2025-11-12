@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { Head, usePage, Link } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
@@ -231,6 +231,14 @@ const formatDate = (date) => {
         day: "numeric",
     });
 };
+
+// Check if user can check in based on operational hours
+const canCheckInOperational = computed(() => {
+    return (
+        (!todayAttendance.value || todayAttendance.value.check_out_time) &&
+        outlet.value?.operational_status?.status === "open"
+    );
+});
 
 onMounted(() => {
     fetchAttendanceStatus();
@@ -641,6 +649,87 @@ onMounted(() => {
                                 {{ outlet.address }}
                             </div>
                         </div> -->
+
+                        <!-- Operational Hours Section -->
+                        <div v-if="outlet.operational_status">
+                            <div class="text-sm text-muted mb-2">
+                                Jam Operasional
+                            </div>
+                            <div class="space-y-2">
+                                <!-- Status Badge -->
+                                <div class="flex items-center justify-between">
+                                    <span
+                                        :class="[
+                                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                                            outlet.operational_status.status ===
+                                            'open'
+                                                ? 'bg-success-100 text-success-600'
+                                                : 'bg-warning-100 text-warning-600',
+                                        ]"
+                                    >
+                                        <span
+                                            v-if="
+                                                outlet.operational_status
+                                                    .status === 'open'
+                                            "
+                                            class="w-2 h-2 bg-success-600 rounded-full mr-1.5 animate-pulse"
+                                        ></span>
+                                        <span
+                                            v-else
+                                            class="w-2 h-2 bg-warning-600 rounded-full mr-1.5"
+                                        ></span>
+                                        {{ outlet.operational_status.text }}
+                                    </span>
+                                </div>
+
+                                <!-- Operational Hours -->
+                                <div
+                                    class="flex items-center text-sm text-text-2"
+                                >
+                                    <svg
+                                        class="w-4 h-4 mr-1.5 text-muted"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    {{ outlet.operational_status.time }}
+                                </div>
+
+                                <!-- Work Days -->
+                                <div
+                                    v-if="
+                                        outlet.work_days &&
+                                        outlet.work_days.length > 0
+                                    "
+                                    class="flex items-start text-sm text-text-2"
+                                >
+                                    <svg
+                                        class="w-4 h-4 mr-1.5 text-muted mt-0.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                        />
+                                    </svg>
+                                    <span class="line-clamp-2">{{
+                                        outlet.formatted_work_days
+                                    }}</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <div class="text-sm text-muted">
                                 Radius Geofence
@@ -757,21 +846,51 @@ onMounted(() => {
 
                     <!-- Action Buttons -->
                     <div class="space-y-3">
+                        <!-- Check-in Button -->
                         <Button
                             v-if="
                                 !todayAttendance ||
                                 todayAttendance.check_out_time
                             "
                             @click="checkIn"
-                            :disabled="isLoading"
+                            :disabled="isLoading || !canCheckInOperational"
                             variant="primary"
                             size="lg"
                             class="w-full"
                         >
                             <span v-if="isLoading">Sedang Check-in...</span>
+                            <span v-else-if="!canCheckInOperational">
+                                🔒 Outlet Tutup
+                            </span>
                             <span v-else>📍 CHECK IN</span>
                         </Button>
 
+                        <!-- Operational Status Message -->
+                        <div
+                            v-if="
+                                (!todayAttendance ||
+                                    todayAttendance.check_out_time) &&
+                                !canCheckInOperational &&
+                                outlet?.operational_status
+                            "
+                            class="text-center text-sm text-warning-600 bg-warning-50 rounded-lg p-3"
+                        >
+                            <div class="font-medium mb-1">
+                                {{ outlet.operational_status.text }}
+                            </div>
+                            <div class="text-xs">
+                                {{ outlet.operational_status.time }}
+                            </div>
+                            <div
+                                v-if="outlet.operational_status.time_until_next"
+                                class="text-xs mt-1"
+                            >
+                                Buka dalam:
+                                {{ outlet.operational_status.time_until_next }}
+                            </div>
+                        </div>
+
+                        <!-- Check-out Button -->
                         <Button
                             v-if="
                                 todayAttendance &&

@@ -160,15 +160,27 @@ class AttendanceController extends Controller
                 $outlet->longitude
             );
 
-            // Check if within geofence radius
-            if ($distance > $outlet->radius) {
-                return response()->json([
-                    'message' => "You are too far from the outlet. Distance: " . round($distance) . "m, Required: Within {$outlet->radius}m",
-                    'success' => false,
-                    'distance' => round($distance),
-                    'required_distance' => $outlet->radius
-                ], 400);
-            }
+        // Check if within geofence radius
+        if ($distance > $outlet->radius) {
+            return response()->json([
+                'message' => "You are too far from the outlet. Distance: " . round($distance) . "m, Required: Within {$outlet->radius}m",
+                'success' => false,
+                'distance' => round($distance),
+                'required_distance' => $outlet->radius
+            ], 400);
+        }
+
+        // Check if outlet is currently operational
+        if (!$outlet->isCurrentlyOperational()) {
+            return response()->json([
+                'message' => 'Check-in hanya diperbolehkan dalam jam operasional outlet: ' . $outlet->formatted_operational_hours,
+                'success' => false,
+                'current_status' => $outlet->operational_status,
+                'operational_hours' => $outlet->formatted_operational_hours,
+                'next_operational_time' => $outlet->getNextOperationalTime()?->format('H:i'),
+                'time_until_next' => $outlet->getTimeUntilNextOperational()
+            ], 400);
+        }
 
             try {
                 // Process selfie upload
@@ -429,10 +441,24 @@ class AttendanceController extends Controller
             ->take(10)
             ->get();
 
+        // Get user's outlet with operational status
+        $outlet = $user->outlet;
+        
+        // Add operational status to outlet data
+        if ($outlet) {
+            $outlet->append([
+                'operational_start_time_formatted',
+                'operational_end_time_formatted',
+                'formatted_operational_hours',
+                'operational_status',
+                'formatted_work_days'
+            ]);
+        }
+
         return response()->json([
             'today_attendance' => $todayAttendance,
             'recent_attendances' => $recentAttendances,
-            'outlet' => $user->outlet
+            'outlet' => $outlet
         ]);
     }
 

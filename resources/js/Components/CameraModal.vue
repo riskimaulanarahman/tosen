@@ -272,9 +272,14 @@ const capturePhoto = () => {
 };
 
 // Retake photo
-const retakePhoto = () => {
+const retakePhoto = async () => {
     capturedImage.value = null;
     cameraError.value = "";
+    cleanupCamera();
+
+    // Give Vue a tick to render video element before initializing
+    await nextTick();
+    await initializeCamera();
 };
 
 // Confirm captured photo
