@@ -139,6 +139,31 @@ const toleranceSettings = computed(() => {
                         outlet.timezone || "Asia/Jakarta"
                     }}</span>
                 </div>
+                <!-- Additional info for closed status -->
+                <div
+                    v-if="
+                        statusData.status === 'closed' &&
+                        statusData.next_open_time
+                    "
+                    class="pt-2 border-t border-gray-600"
+                >
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Buka Kembali:</span>
+                        <span class="text-gray-200">
+                            {{ statusData.next_open_day }}
+                            {{ statusData.next_open_time }}
+                        </span>
+                    </div>
+                    <div
+                        v-if="statusData.time_until_next"
+                        class="flex justify-between text-sm"
+                    >
+                        <span class="text-gray-400">Dalam:</span>
+                        <span class="text-yellow-400 font-medium">
+                            {{ statusData.time_until_next }}
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
 

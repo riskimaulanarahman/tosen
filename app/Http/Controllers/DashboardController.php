@@ -93,6 +93,13 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         
+        // Debug logging
+        \Log::info('Employee Dashboard loading', [
+            'user_id' => $user->id,
+            'user_role' => $user->role,
+            'outlet_id' => $user->outlet_id
+        ]);
+        
         // Get today's attendance
         $todayAttendance = Attendance::where('user_id', $user->id)
             ->whereDate('created_at', today())
@@ -108,16 +115,27 @@ class DashboardController extends Controller
         // Get user's outlet with operational status
         $outlet = $user->outlet;
         
+        // Debug logging for outlet
+        \Log::info('Outlet data retrieved', [
+            'outlet_exists' => $outlet ? true : false,
+            'outlet_id' => $outlet?->id,
+            'outlet_name' => $outlet?->name
+        ]);
+        
         // Add operational status to outlet data
         if ($outlet) {
-            $outlet->load('owner');
             $outlet->append([
                 'operational_start_time_formatted',
                 'operational_end_time_formatted',
                 'formatted_operational_hours',
                 'operational_status',
-                'formatted_work_days'
+                'formatted_work_days',
+                'tolerance_settings'
             ]);
+            
+            // Calculate current overtime for checkout validation
+            $currentOvertimeMinutes = $outlet->calculateOvertime(now());
+            $outlet->current_overtime_minutes = $currentOvertimeMinutes;
         }
 
         return inertia('Dashboard', [

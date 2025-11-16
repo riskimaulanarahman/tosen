@@ -5,10 +5,29 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class Outlet extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'address',
+        'latitude',
+        'longitude',
+        'radius',
+        'operational_start_time',
+        'operational_end_time',
+        'work_days',
+        'timezone',
+        'late_tolerance_minutes',
+        'early_checkout_tolerance',
+        'grace_period_minutes',
+        'overtime_threshold_minutes',
+        'owner_id',
+        'overtime_config',
+    ];
 
     protected $appends = [
         'operational_start_time_formatted',
@@ -18,29 +37,176 @@ class Outlet extends Model
     ];
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * Get formatted work days.
      */
-    protected $fillable = [
-        'name',
-        'address',
-        'latitude',
-        'longitude',
-        'radius',
-        'owner_id',
-        'operational_start_time',
-        'operational_end_time',
-        'late_tolerance_minutes',
-        'early_checkout_tolerance',
-        'work_days',
-        'timezone',
-        'grace_period_minutes',
-        'overtime_threshold_minutes',
-    ];
+    public function getFormattedWorkDaysAttribute()
+    {
+        if (empty($this->work_days)) {
+            return 'Tidak ada jadwal';
+        }
+
+        // Map numeric values (1-7) to Indonesian day names
+        $dayNames = [
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            7 => 'Minggu'
+        ];
+
+        // Filter out null values and get actual day values
+        $days = array_filter($this->work_days, function ($day) {
+            return !is_null($day);
+        });
+
+        // Map day values to Indonesian names
+        $formattedDays = array_map(function ($day) use ($dayNames) {
+            return $dayNames[$day] ?? $day;
+        }, $days);
+
+        return implode(', ', $formattedDays);
+    }
 
     /**
-     * Get the owner that owns the outlet.
+     * Get overtime configuration attribute.
+     */
+    public function getOvertimeConfigAttribute($value)
+    {
+        return $value ? json_decode($value, true) : $this->getDefaultOvertimeConfig();
+    }
+
+    /**
+     * Set overtime configuration attribute.
+     */
+    public function setOvertimeConfigAttribute($value)
+    {
+        $this->attributes['overtime_config'] = is_array($value) ? json_encode($value) : $value;
+    }
+
+    /**
+     * Get default overtime configuration.
+     */
+    public function getDefaultOvertimeConfig()
+    {
+        return [
+            'enabled' => true,
+            'overtime' => [
+                'threshold_minutes' => 60,
+                'mandatory_remarks' => true,
+                'remarks_min_length' => 10,
+                'remarks_max_length' => 500
+            ],
+            'early_checkout' => [
+                'enabled' => true,
+                'threshold_minutes' => 240,
+                'mandatory_remarks' => true,
+                'remarks_min_length' => 10,
+                'remarks_max_length' => 300
+            ],
+            'advanced' => [
+                'max_daily_overtime' => 480,
+                'weekend_multiplier' => 1.5,
+                'holiday_multiplier' => 2.0,
+                'auto_calculate_overtime' => true,
+                'overtime_approval_required' => false
+            ]
+        ];
+    }
+
+    /**
+     * Check if overtime remarks are required.
+     */
+    public function requiresOvertimeRemarks($overtimeMinutes)
+    {
+        $config = $this->overtime_config;
+        return $config['enabled'] && 
+               isset($config['overtime']) &&
+               $config['overtime']['mandatory_remarks'] && 
+               $overtimeMinutes >= $config['overtime']['threshold_minutes'];
+    }
+
+    /**
+     * Check if early checkout remarks are required.
+     */
+    public function requiresEarlyCheckoutRemarks($workDurationMinutes)
+    {
+        $config = $this->overtime_config;
+        return $config['enabled'] && 
+               isset($config['early_checkout']) &&
+               $config['early_checkout']['enabled'] && 
+               $config['early_checkout']['mandatory_remarks'] && 
+               $workDurationMinutes < $config['early_checkout']['threshold_minutes'];
+    }
+
+    /**
+     * Check if should show early checkout warning.
+     */
+    public function shouldShowEarlyCheckoutWarning($workDurationMinutes)
+    {
+        $config = $this->overtime_config;
+        return $config['enabled'] && 
+               isset($config['early_checkout']) &&
+               $config['early_checkout']['enabled'] && 
+               $workDurationMinutes < $config['early_checkout']['threshold_minutes'];
+    }
+
+    /**
+     * Calculate overtime minutes for given checkout time.
+     */
+    public function calculateOvertime($checkoutTime)
+    {
+        if (!$this->operational_end_time) {
+            return 0;
+        }
+
+        // Create end datetime with the same date as checkout time
+        $endDateTime = $checkoutTime->copy()->setTimeFromTimeString($this->operational_end_time);
+        
+        // If checkout is before or at operational end, no overtime
+        if ($checkoutTime->lte($endDateTime)) {
+            return 0;
+        }
+
+        // Calculate overtime (checkout time - end time)
+        return $endDateTime->diffInMinutes($checkoutTime);
+    }
+
+    /**
+     * Get overtime remarks validation rules.
+     */
+    public function getOvertimeRemarksRules()
+    {
+        $config = $this->overtime_config;
+        if (!isset($config['overtime'])) {
+            return [];
+        }
+
+        return [
+            'min' => $config['overtime']['remarks_min_length'] ?? 10,
+            'max' => $config['overtime']['remarks_max_length'] ?? 500
+        ];
+    }
+
+    /**
+     * Get early checkout remarks validation rules.
+     */
+    public function getEarlyCheckoutRemarksRules()
+    {
+        $config = $this->overtime_config;
+        if (!isset($config['early_checkout'])) {
+            return [];
+        }
+
+        return [
+            'min' => $config['early_checkout']['remarks_min_length'] ?? 10,
+            'max' => $config['early_checkout']['remarks_max_length'] ?? 300
+        ];
+    }
+
+    /**
+     * Get the owner of the outlet.
      */
     public function owner()
     {
@@ -115,26 +281,6 @@ class Outlet extends Model
         return $this->operational_end_time->format('H:i');
     }
 
-    /**
-     * Get formatted work days.
-     */
-    public function getFormattedWorkDaysAttribute()
-    {
-        if (!$this->work_days || empty($this->work_days)) {
-            return 'Not set';
-        }
-
-        $dayNames = [
-            1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 
-            4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'
-        ];
-
-        $days = array_map(function ($day) use ($dayNames) {
-            return $dayNames[$day] ?? 'Unknown';
-        }, $this->work_days);
-
-        return implode(', ', $days);
-    }
 
     /**
      * Check if outlet is currently operational.
@@ -187,7 +333,7 @@ class Outlet extends Model
     }
 
     /**
-     * Get time until next operational time.
+     * Get time until next operational time (legacy method for compatibility).
      */
     public function getTimeUntilNextOperational(): string
     {
@@ -232,6 +378,64 @@ class Outlet extends Model
     }
 
     /**
+     * Get formatted time until next operational (user-friendly in Indonesian).
+     */
+    public function getFormattedTimeUntilNext(): string
+    {
+        $nextOperational = $this->getNextOperationalTime();
+
+        if (!$nextOperational) {
+            return 'Tidak ada jam operasional';
+        }
+
+        $now = now()->setTimezone($this->timezone ?? 'Asia/Jakarta');
+        $secondsUntilNext = (int)$now->diffInSeconds($nextOperational);
+
+        if ($secondsUntilNext <= 0) {
+            return 'sekarang';
+        }
+
+        $days = intdiv($secondsUntilNext, 86400);
+        $secondsUntilNext -= $days * 86400;
+        $hours = intdiv($secondsUntilNext, 3600);
+        $secondsUntilNext -= $hours * 3600;
+        $minutes = intdiv($secondsUntilNext, 60);
+
+        // Format yang lebih user-friendly dalam bahasa Indonesia
+        if ($days > 0) {
+            return "{$days} hari " . ($hours > 0 ? "{$hours} jam" : '');
+        }
+
+        if ($hours > 0) {
+            return "{$hours} jam " . ($minutes > 0 ? "{$minutes} menit" : '');
+        }
+
+        if ($minutes > 0) {
+            return "{$minutes} menit";
+        }
+
+        return 'kurang dari 1 menit';
+    }
+
+    /**
+     * Get day name in Indonesian.
+     */
+    public function getDayNameInIndonesian(int $dayOfWeekIso): string
+    {
+        $dayNames = [
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            7 => 'Minggu'
+        ];
+
+        return $dayNames[$dayOfWeekIso] ?? 'Unknown';
+    }
+
+    /**
      * Get operational status with color.
      */
     public function getOperationalStatusAttribute()
@@ -239,19 +443,23 @@ class Outlet extends Model
         if ($this->isCurrentlyOperational()) {
             return [
                 'status' => 'open',
-                'text' => 'Open Now',
+                'text' => 'Sedang Buka',
                 'color' => 'success',
                 'time' => $this->getFormattedOperationalHoursAttribute()
             ];
         }
 
-        $nextTime = $this->getTimeUntilNextOperational();
+        $nextTime = $this->getFormattedTimeUntilNext();
+        $nextOperationalTime = $this->getNextOperationalTime();
         
         return [
             'status' => 'closed',
-            'text' => "Opens in {$nextTime}",
+            'text' => "Buka dalam {$nextTime}",
             'color' => 'warning',
-            'time' => $this->getFormattedOperationalHoursAttribute()
+            'time' => $this->getFormattedOperationalHoursAttribute(),
+            'time_until_next' => $nextTime,
+            'next_open_time' => $nextOperationalTime ? $nextOperationalTime->format('H:i') : null,
+            'next_open_day' => $nextOperationalTime ? $this->getDayNameInIndonesian($nextOperationalTime->dayOfWeekIso) : null
         ];
     }
 

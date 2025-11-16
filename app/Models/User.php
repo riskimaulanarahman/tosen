@@ -55,7 +55,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function outlet()
     {
-        return $this->belongsTo(Outlet::class);
+        return $this->belongsTo(Outlet::class, 'outlet_id');
     }
 
     /**
@@ -151,7 +151,7 @@ class User extends Authenticatable implements MustVerifyEmail
             null, // No password for email verification notification
             $this->outlet ? $this->outlet->name : 'Your Outlet',
             $this->outlet ? $this->outlet->address : 'Your Address',
-            $this->isOwner() ? $this->name : ($this->outlet ? $this->outlet->owner->name : 'System Admin')
+            $this->isOwner() ? $this->name : 'System Admin'
         );
     }
 }

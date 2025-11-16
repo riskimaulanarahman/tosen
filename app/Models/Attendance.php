@@ -30,6 +30,8 @@ class Attendance extends Model
         'notes',
         'check_in_selfie_path',
         'check_out_selfie_path',
+        'checkout_remarks',
+        'is_overtime',
         'check_in_thumbnail_path',
         'check_out_thumbnail_path',
         'has_check_in_selfie',

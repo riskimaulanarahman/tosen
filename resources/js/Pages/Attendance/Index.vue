@@ -4,29 +4,22 @@ import { Head, usePage, Link } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
 import Button from "@/Components/ui/Button.vue";
-import CameraModal from "@/Components/CameraModal.vue";
+import AttendanceAction from "@/Components/AttendanceAction.vue";
+import { useAttendanceState } from "@/utils/attendanceState";
 
 const page = usePage();
 const attendances = ref(page.props.attendances);
-const todayAttendance = ref(page.props.todayAttendance);
 const stats = ref(page.props.stats);
-const outlet = ref(page.props.outlet);
 
-// Check if user can check in
-const canCheckIn = computed(() => {
-    return (
-        !todayAttendance.value || todayAttendance.value.status === "checked_out"
-    );
-});
-
-// Check if user can check out - FIXED LOGIC
-const canCheckOut = computed(() => {
-    return (
-        todayAttendance.value &&
-        !todayAttendance.value.check_out_time &&
-        todayAttendance.value.status === "checked_in"
-    );
-});
+// Use shared attendance state
+const {
+    todayAttendance,
+    outlet,
+    canCheckIn,
+    canCheckOut,
+    isCheckedIn,
+    fetchAttendanceStatus,
+} = useAttendanceState();
 
 // Loading states
 const isGettingLocation = ref(false);
@@ -61,48 +54,68 @@ const handleCameraConfirm = async (imageBlob) => {
     showCameraModal.value = false;
     locationError.value = "";
 
-    try {
-        // Get location first
-        const position = await getCurrentPosition();
+    const performAttendance = async () => {
+        try {
+            // Get location first
+            const position = await getCurrentPosition();
 
-        // Create FormData for file upload
-        const formData = new FormData();
-        formData.append("latitude", position.coords.latitude);
-        formData.append("longitude", position.coords.longitude);
-        formData.append("accuracy", position.coords.accuracy);
-        formData.append("selfie", imageBlob, `selfie_${Date.now()}.jpg`);
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append("latitude", position.coords.latitude);
+            formData.append("longitude", position.coords.longitude);
+            formData.append("accuracy", position.coords.accuracy);
+            formData.append("selfie", imageBlob, `selfie_${Date.now()}.jpg`);
 
-        // Determine endpoint
-        const endpoint =
-            cameraAction.value === "checkin"
-                ? "/attendance/checkin"
-                : "/attendance/checkout";
-
-        const response = await axios.post(endpoint, formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-        });
-
-        if (response.data.success) {
-            handleSuccess(
+            // Determine endpoint
+            const endpoint =
                 cameraAction.value === "checkin"
-                    ? "Check-in berhasil!"
-                    : "Check-out berhasil!"
+                    ? "/attendance/checkin"
+                    : "/attendance/checkout";
+
+            const response = await axios.post(endpoint, formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+
+            if (response.data.success) {
+                // Reset retry counters on success
+                window.enhancedErrorHandler.resetRetries(cameraAction.value);
+
+                handleSuccess(
+                    cameraAction.value === "checkin"
+                        ? "Check-in berhasil!"
+                        : "Check-out berhasil!"
+                );
+                // Reload data
+                window.location.reload();
+            } else {
+                handleError(new Error(response.data.message));
+            }
+        } catch (error) {
+            console.error("Attendance error:", error);
+
+            // Use enhanced error handler with retry mechanism
+            const shouldRetry = await window.enhancedErrorHandler.handleError(
+                error,
+                null,
+                {
+                    action: cameraAction.value,
+                    retryCallback: performAttendance,
+                }
             );
-            // Reload data
-            window.location.reload();
-        } else {
-            handleError(new Error(response.data.message));
+
+            if (!shouldRetry) {
+                handleLocationError(error);
+            }
         }
-    } catch (error) {
-        console.error("Attendance error:", error);
-        handleLocationError(error);
-    } finally {
-        isProcessing.value = false;
-        capturedSelfie.value = null;
-        cameraAction.value = "";
-    }
+    };
+
+    await performAttendance();
+
+    isProcessing.value = false;
+    capturedSelfie.value = null;
+    cameraAction.value = "";
 };
 
 // Handle camera modal close
@@ -118,7 +131,7 @@ const getCurrentPosition = (retryCount = 0) => {
         if (!navigator.geolocation) {
             reject(
                 new Error(
-                    "Geolocation is not supported by this browser. Please try using a different browser."
+                    "Geolocation tidak didukung pada browser ini. Silakan gunakan browser modern."
                 )
             );
             return;
@@ -126,8 +139,8 @@ const getCurrentPosition = (retryCount = 0) => {
 
         const options = {
             enableHighAccuracy: true,
-            timeout: 15000, // Increased timeout
-            maximumAge: 30000, // Allow cached position up to 30 seconds
+            timeout: 20000, // Increased timeout for better reliability
+            maximumAge: 60000, // Allow cached position up to 60 seconds
         };
 
         navigator.geolocation.getCurrentPosition(
@@ -150,13 +163,13 @@ const getCurrentPosition = (retryCount = 0) => {
 
 // Handle different types of geolocation errors
 const handleGeolocationError = (error, resolve, reject, retryCount) => {
-    const maxRetries = 2;
+    const maxRetries = 1; // Reduced retries since enhanced handler handles retries
 
     switch (error.code) {
         case error.PERMISSION_DENIED:
             reject(
                 new Error(
-                    "Location access was denied. Please enable location permissions in your browser settings and try again."
+                    "Akses lokasi ditolak. Silakan aktifkan izin lokasi di pengaturan browser Anda."
                 )
             );
             break;
@@ -174,7 +187,7 @@ const handleGeolocationError = (error, resolve, reject, retryCount) => {
             } else {
                 reject(
                     new Error(
-                        "Location information is unavailable. Please check your GPS/location services and try again."
+                        "Informasi lokasi tidak tersedia. Periksa layanan GPS/lokasi Anda dan coba lagi."
                     )
                 );
             }
@@ -193,7 +206,7 @@ const handleGeolocationError = (error, resolve, reject, retryCount) => {
             } else {
                 reject(
                     new Error(
-                        "Location request timed out. Please ensure you have a stable internet connection and try again."
+                        "Permintaan lokasi timeout. Pastikan Anda memiliki koneksi internet stabil dan coba lagi."
                     )
                 );
             }
@@ -202,7 +215,7 @@ const handleGeolocationError = (error, resolve, reject, retryCount) => {
         default:
             reject(
                 new Error(
-                    "An unknown error occurred while getting your location. Please try again."
+                    "Terjadi kesalahan tidak diketahui saat mendapatkan lokasi Anda. Silakan coba lagi."
                 )
             );
             break;
@@ -211,13 +224,13 @@ const handleGeolocationError = (error, resolve, reject, retryCount) => {
 
 // Handle location errors with user-friendly messages
 const handleLocationError = (error) => {
-    let errorMessage = "Failed to get location. ";
+    let errorMessage = "Gagal mendapatkan lokasi. ";
 
     if (error.message) {
         errorMessage += error.message;
     } else {
         errorMessage +=
-            "Please ensure location services are enabled and you have granted permission.";
+            "Pastikan layanan lokasi aktif dan Anda telah memberikan izin.";
     }
 
     locationError.value = errorMessage;
@@ -225,12 +238,12 @@ const handleLocationError = (error) => {
     // Additional troubleshooting tips
     setTimeout(() => {
         locationError.value +=
-            "\n\nTroubleshooting tips:\n" +
-            "• Make sure location services are enabled on your device\n" +
-            "• Grant location permission to this website\n" +
-            "• Try refreshing the page and trying again\n" +
-            "• If indoors, try moving closer to a window\n" +
-            "• Check your internet connection";
+            "\n\nTips troubleshooting:\n" +
+            "• Pastikan layanan lokasi aktif di perangkat Anda\n" +
+            "• Berikan izin lokasi ke website ini\n" +
+            "• Coba refresh halaman dan coba lagi\n" +
+            "• Jika di dalam ruangan, coba mendekati jendela\n" +
+            "• Periksa koneksi internet Anda";
     }, 1000);
 };
 
@@ -277,6 +290,28 @@ const getStatusText = (status) => {
             return "Unknown";
     }
 };
+
+// Handle attendance success
+const handleAttendanceSuccess = (data) => {
+    // Refresh attendance status after successful action
+    fetchAttendanceStatus();
+};
+
+// Handle attendance error
+const handleAttendanceError = (errorData) => {
+    console.error("Attendance error:", errorData);
+    // Could show error message here if needed
+};
+// Initialize state with props
+onMounted(() => {
+    // Initialize with server-side props
+    if (page.props.todayAttendance) {
+        todayAttendance.value = page.props.todayAttendance;
+    }
+    if (page.props.outlet) {
+        outlet.value = page.props.outlet;
+    }
+});
 </script>
 
 <template>
@@ -291,6 +326,24 @@ const getStatusText = (status) => {
                     <p class="mt-2 text-muted">
                         Kelola kehadiran Anda di {{ outlet?.name || "Outlet" }}
                     </p>
+                </div>
+
+                <!-- Attendance Actions -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <AttendanceAction
+                        action="checkin"
+                        :disabled="!canCheckIn"
+                        :outlet="outlet"
+                        @success="handleAttendanceSuccess"
+                        @error="handleAttendanceError"
+                    />
+                    <AttendanceAction
+                        action="checkout"
+                        :disabled="!canCheckOut"
+                        :outlet="outlet"
+                        @success="handleAttendanceSuccess"
+                        @error="handleAttendanceError"
+                    />
                 </div>
 
                 <!-- Stats Cards -->

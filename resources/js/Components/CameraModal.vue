@@ -154,8 +154,15 @@ const initializeCamera = async () => {
         console.error("Camera initialization error:", error);
         cameraError.value = getCameraErrorMessage(error);
         isLoading.value = false;
-        // Also show error with SweetAlert for better visibility
-        handleError(error, getCameraErrorMessage(error));
+        // Use enhanced error handler for better user experience
+        window.enhancedErrorHandler.handleError(
+            error,
+            getCameraErrorMessage(error),
+            {
+                action: "camera_init",
+                retryCallback: initializeCamera,
+            }
+        );
     }
 };
 
@@ -266,8 +273,15 @@ const capturePhoto = () => {
         console.error("Capture photo error:", error);
         cameraError.value = "Gagal mengambil foto. Silakan coba lagi.";
         isCapturing.value = false;
-        // Also show error with SweetAlert for better visibility
-        handleError(error, "Gagal mengambil foto. Silakan coba lagi.");
+        // Use enhanced error handler for better user experience
+        window.enhancedErrorHandler.handleError(
+            error,
+            "Gagal mengambil foto. Silakan coba lagi.",
+            {
+                action: "camera_capture",
+                retryCallback: capturePhoto,
+            }
+        );
     }
 };
 

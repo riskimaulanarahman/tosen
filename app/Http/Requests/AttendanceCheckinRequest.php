@@ -23,26 +23,8 @@ class AttendanceCheckinRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'latitude' => [
-                'required',
-                'numeric',
-                'between:-90,90',
-                function ($attribute, $value, $fail) {
-                    if (abs($value) < 0.000001) {
-                        $fail('Koordinat GPS tidak valid. Silakan coba lagi.');
-                    }
-                }
-            ],
-            'longitude' => [
-                'required',
-                'numeric',
-                'between:-180,180',
-                function ($attribute, $value, $fail) {
-                    if (abs($value) < 0.000001) {
-                        $fail('Koordinat GPS tidak valid. Silakan coba lagi.');
-                    }
-                }
-            ],
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
             'accuracy' => 'nullable|numeric|min:0', // GPS accuracy in meters
             'selfie' => [
                 'required',
@@ -50,21 +32,7 @@ class AttendanceCheckinRequest extends FormRequest
                 'image',
                 'mimes:jpeg,jpg,png',
                 'max:2048', // 2MB max
-                'dimensions:min_width=300,min_height=300',
-                function ($attribute, $value, $fail) {
-                    // Validate image aspect ratio
-                    if ($value && $value->isValid()) {
-                        $imageInfo = getimagesize($value->getPathname());
-                        if ($imageInfo) {
-                            [$width, $height] = $imageInfo;
-                            $aspectRatio = $width / $height;
-                            
-                            if ($aspectRatio < 0.5 || $aspectRatio > 2.0) {
-                                $fail('Selfie aspect ratio is too extreme. Please take a normal portrait photo.');
-                            }
-                        }
-                    }
-                }
+                'dimensions:min_width=200,min_height=200', // Reduced minimum requirements
             ],
         ];
     }
@@ -105,12 +73,9 @@ class AttendanceCheckinRequest extends FormRequest
         $validator->after(function ($validator) {
             $user = $this->user();
             
-            // Check if user has an assigned outlet
-            if (!$user->outlet) {
-                $validator->errors()->add('outlet', 'You are not assigned to any outlet. Please contact your administrator.');
-                return;
-            }
-
+            // Simplified validation - only check for existing attendance
+            // Outlet assignment and GPS validation handled in controller
+            
             // Check if user already checked in today and hasn't checked out
             $existingAttendance = \App\Models\Attendance::where('user_id', $user->id)
                 ->whereDate('check_in_time', today())
@@ -118,7 +83,7 @@ class AttendanceCheckinRequest extends FormRequest
                 ->first();
 
             if ($existingAttendance) {
-                $validator->errors()->add('attendance', 'You have already checked in today. Please check out first before checking in again.');
+                $validator->errors()->add('attendance', 'Anda sudah check-in hari ini. Silakan check-out terlebih dahulu.');
             }
         });
     }

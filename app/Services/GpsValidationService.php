@@ -16,42 +16,42 @@ class GpsValidationService
         $validationResult = [
             'valid' => true,
             'warnings' => [],
-            'risk_score' => 0
+            'risk_score' => 0,
+            'user_message' => '',
+            'retry_suggested' => false
         ];
 
-        // 1. Check coordinate validity
+        // 1. Basic coordinate validity check - only reject for obviously invalid coordinates
         $coordValidation = self::validateCoordinates($latitude, $longitude);
         if (!$coordValidation['valid']) {
             $validationResult['valid'] = false;
             $validationResult['warnings'][] = $coordValidation['message'];
             $validationResult['risk_score'] += 50;
+            $validationResult['user_message'] = 'GPS tidak terdeteksi dengan benar. Pastikan lokasi Anda aktif dan coba lagi.';
+            $validationResult['retry_suggested'] = true;
         }
 
-        // 2. Check for impossible movement speed
-        $speedValidation = self::checkMovementSpeed($latitude, $longitude, $userId);
-        if (!$speedValidation['valid']) {
-            $validationResult['warnings'][] = $speedValidation['message'];
-            $validationResult['risk_score'] += 30;
-        }
-
-        // 3. Check for location consistency
-        $consistencyValidation = self::checkLocationConsistency($latitude, $longitude, $outlet);
-        if (!$consistencyValidation['valid']) {
-            $validationResult['warnings'][] = $consistencyValidation['message'];
+        // 2. Check if within reasonable distance from outlet - more lenient
+        $distanceValidation = self::checkLocationDistance($latitude, $longitude, $outlet);
+        if (!$distanceValidation['valid']) {
+            $validationResult['warnings'][] = $distanceValidation['message'];
             $validationResult['risk_score'] += 20;
+            $validationResult['user_message'] = 'Lokasi Anda terlalu jauh dari outlet. Pastikan Anda berada di area kerja yang ditentukan.';
+            $validationResult['retry_suggested'] = false;
         }
 
-        // 4. Check for GPS accuracy indicators
-        $accuracyValidation = self::checkGpsAccuracy($latitude, $longitude, $accuracy);
-        if (!$accuracyValidation['valid']) {
-            $validationResult['warnings'][] = $accuracyValidation['message'];
-            $validationResult['risk_score'] += 15;
+        // 3. Basic accuracy check - more lenient threshold
+        if ($accuracy !== null && $accuracy > 1000) { // Increased from 500 to 1000
+            $validationResult['warnings'][] = 'GPS accuracy is low';
+            $validationResult['risk_score'] += 5; // Reduced from 10 to 5
+            $validationResult['user_message'] = 'Akurasi GPS rendah. Coba lagi di lokasi dengan sinyal lebih baik.';
+            $validationResult['retry_suggested'] = true;
         }
 
-        // Determine if location is suspicious
-        if ($validationResult['risk_score'] > 40) {
+        // Only reject for critical issues (increased threshold from 50 to 70)
+        if ($validationResult['risk_score'] > 70) {
             $validationResult['valid'] = false;
-            Log::warning('GPS Spoofing Detected', [
+            Log::warning('GPS Validation Failed', [
                 'user_id' => $userId,
                 'latitude' => $latitude,
                 'longitude' => $longitude,
@@ -176,41 +176,51 @@ class GpsValidationService
     }
 
     /**
+     * Simplified location distance check.
+     */
+    private static function checkLocationDistance($latitude, $longitude, $outlet)
+    {
+        $distance = self::calculateDistance(
+            $latitude,
+            $longitude,
+            $outlet->latitude,
+            $outlet->longitude
+        );
+
+        // Only reject if extremely far (more than 10x radius) - more lenient
+        if ($distance > ($outlet->radius * 10)) {
+            return [
+                'valid' => false,
+                'message' => "Lokasi terlalu jauh dari outlet: " . round($distance) . "m (dalam radius {$outlet->radius}m diperlukan)"
+            ];
+        }
+
+        return ['valid' => true];
+    }
+
+    /**
      * Check for GPS accuracy indicators.
      */
     private static function checkGpsAccuracy($latitude, $longitude, $accuracy = null)
     {
-        // Removed overly strict checks that were causing false positives
-        // Modern GPS devices and services can provide very accurate coordinates
-        // These checks were rejecting legitimate GPS readings
-
-        // Only check for obviously fake coordinates (exact same pattern)
+        // Simplified accuracy checks - only reject for obviously invalid coordinates
         $latStr = (string)$latitude;
         $lonStr = (string)$longitude;
         
-        // Only reject if coordinates end with many zeros (like 0.0000000000)
-        if (substr($latStr, -8) === '00000000' || substr($lonStr, -8) === '00000000') {
+        // Only reject if exactly 0,0 (obviously invalid)
+        if ($latitude == 0 && $longitude == 0) {
             return [
                 'valid' => false,
-                'message' => 'GPS coordinates appear to be rounded. Please ensure your location services are working properly.'
+                'message' => 'Koordinat GPS tidak valid (0,0). Silakan coba lagi atau pindah ke lokasi yang berbeda.'
             ];
         }
 
-        if ($accuracy !== null) {
-            // Accuracy is measured in meters: anything higher than 500m is unreliable
-            if ($accuracy > 500) {
-                return [
-                    'valid' => false,
-                    'message' => 'GPS accuracy terlalu rendah (' . round($accuracy) . "m). Aktifkan mode akurasi tinggi sebelum melanjutkan."
-                ];
-            }
-
-            if ($accuracy > 150) {
-                return [
-                    'valid' => false,
-                    'message' => 'GPS accuracy kurang presisi (' . round($accuracy) . "m). Silakan tunggu hingga lokasi lebih akurat."
-                ];
-            }
+        // Much more lenient accuracy checks
+        if ($accuracy !== null && $accuracy > 2000) { // Increased from 500 to 2000
+            return [
+                'valid' => false,
+                'message' => 'Akurasi GPS sangat rendah (' . round($accuracy) . "m). Coba lagi di lokasi dengan sinyal GPS lebih baik."
+            ];
         }
 
         return ['valid' => true];

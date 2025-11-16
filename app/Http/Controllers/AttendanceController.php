@@ -24,7 +24,7 @@ class AttendanceController extends Controller
     {
         $user = Auth::user();
         
-        // Get attendance history for the employee
+        // Get attendance history for employee
         $attendances = Attendance::where('user_id', $user->id)
             ->with('outlet')
             ->orderBy('created_at', 'desc')
@@ -123,7 +123,7 @@ class AttendanceController extends Controller
             );
 
             if (!$gpsValidation['valid']) {
-                // Log GPS spoofing detection
+                // Log GPS validation failure
                 AuditService::logGpsSpoofing(
                     $user->id,
                     $request->latitude,
@@ -132,23 +132,12 @@ class AttendanceController extends Controller
                     $gpsValidation['risk_score']
                 );
 
-                // Create user-friendly error message
-                $userMessage = 'Tidak dapat melakukan check-in. ';
-                
-                if ($gpsValidation['risk_score'] >= 50) {
-                    $userMessage .= 'GPS tidak terdeteksi dengan benar. Pastikan lokasi Anda aktif dan coba lagi.';
-                } elseif ($gpsValidation['risk_score'] >= 30) {
-                    $userMessage .= 'Terjadi masalah dengan deteksi lokasi. Silakan coba lagi.';
-                } else {
-                    $userMessage .= 'Lokasi Anda terlalu jauh dari outlet. Pastikan Anda berada di area kerja yang ditentukan.';
-                }
-
                 return response()->json([
-                    'message' => $userMessage,
+                    'message' => $gpsValidation['user_message'] ?: 'Tidak dapat melakukan check-in. Silakan coba lagi.',
                     'success' => false,
-                    'risk_score' => $gpsValidation['risk_score'],
+                    'retry_suggested' => $gpsValidation['retry_suggested'] ?? false,
+                    'error_type' => 'gps_validation',
                     'warnings' => $gpsValidation['warnings'],
-                    'debug_info' => implode(', ', $gpsValidation['warnings']) // For debugging
                 ], 400);
             }
 
@@ -160,25 +149,35 @@ class AttendanceController extends Controller
                 $outlet->longitude
             );
 
-        // Check if within geofence radius
-        if ($distance > $outlet->radius) {
+        // Check if within geofence radius - more lenient check
+        if ($distance > ($outlet->radius * 1.5)) { // Allow 50% tolerance
             return response()->json([
-                'message' => "You are too far from the outlet. Distance: " . round($distance) . "m, Required: Within {$outlet->radius}m",
+                'message' => "Anda terlalu jauh dari outlet. Jarak: " . round($distance) . "m, Diperlukan: Dalam radius {$outlet->radius}m",
                 'success' => false,
+                'error_type' => 'distance',
                 'distance' => round($distance),
-                'required_distance' => $outlet->radius
+                'required_distance' => $outlet->radius,
+                'retry_suggested' => false,
             ], 400);
         }
 
-        // Check if outlet is currently operational
+        // Check if outlet is currently operational - simplified message
         if (!$outlet->isCurrentlyOperational()) {
+            $nextTime = $outlet->getNextOperationalTime();
+            $message = 'Check-in hanya diperbolehkan dalam jam operasional outlet: ' . $outlet->formatted_operational_hours;
+            
+            if ($nextTime) {
+                $message .= '. Check-in dapat dilakukan kembali pukul ' . $nextTime->format('H:i');
+            }
+            
             return response()->json([
-                'message' => 'Check-in hanya diperbolehkan dalam jam operasional outlet: ' . $outlet->formatted_operational_hours,
+                'message' => $message,
                 'success' => false,
+                'error_type' => 'operational_hours',
                 'current_status' => $outlet->operational_status,
                 'operational_hours' => $outlet->formatted_operational_hours,
-                'next_operational_time' => $outlet->getNextOperationalTime()?->format('H:i'),
-                'time_until_next' => $outlet->getTimeUntilNextOperational()
+                'next_operational_time' => $nextTime?->format('H:i'),
+                'retry_suggested' => false,
             ], 400);
         }
 
@@ -190,9 +189,11 @@ class AttendanceController extends Controller
                     $validation = ImageOptimizationService::validateSelfie($request->file('selfie'));
                     if (!$validation['valid']) {
                         return response()->json([
-                            'message' => 'Selfie validation failed: ' . implode(', ', $validation['errors']),
+                            'message' => 'Foto selfie tidak valid: ' . implode(', ', $validation['errors']),
                             'success' => false,
-                            'errors' => $validation['errors']
+                            'error_type' => 'selfie_validation',
+                            'errors' => $validation['errors'],
+                            'retry_suggested' => true,
                         ], 400);
                     }
 
@@ -202,8 +203,10 @@ class AttendanceController extends Controller
                     } catch (\Exception $e) {
                         \Log::error('Selfie upload failed: ' . $e->getMessage());
                         return response()->json([
-                            'message' => 'Failed to process selfie. Please try again.',
-                            'success' => false
+                            'message' => 'Gagal memproses foto. Silakan coba lagi.',
+                            'success' => false,
+                            'error_type' => 'selfie_upload',
+                            'retry_suggested' => true,
                         ], 500);
                     }
                 }
@@ -271,13 +274,6 @@ class AttendanceController extends Controller
      */
     public function checkout(Request $request)
     {
-        $request->validate([
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'accuracy' => 'nullable|numeric|min:0',
-            'selfie' => 'nullable|file|image|mimes:jpeg,jpg,png|max:2048|dimensions:min_width=300,min_height=300',
-        ]);
-
         $user = Auth::user();
         $outlet = $user->outlet;
 
@@ -300,6 +296,51 @@ class AttendanceController extends Controller
             ], 400);
         }
 
+        // Calculate work duration and overtime
+        $checkinTime = $attendance->check_in_time;
+        $checkoutTime = now();
+        $workDurationMinutes = $checkinTime->diffInMinutes($checkoutTime);
+        $overtimeMinutes = $outlet->calculateOvertime($checkoutTime);
+
+        // Determine if remarks are required
+        $requiresEarlyCheckoutRemarks = $outlet->requiresEarlyCheckoutRemarks($workDurationMinutes);
+        $requiresOvertimeRemarks = $outlet->requiresOvertimeRemarks($overtimeMinutes);
+
+        // Build dynamic validation rules
+        $rules = [
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric|min:0',
+            'selfie' => 'nullable|file|image|mimes:jpeg,jpg,png|max:2048|dimensions:min_width=300,min_height=300',
+        ];
+
+        // Add remarks validation if required
+        if ($requiresEarlyCheckoutRemarks || $requiresOvertimeRemarks) {
+            if ($requiresEarlyCheckoutRemarks) {
+                $rulesConfig = $outlet->getEarlyCheckoutRemarksRules();
+                $remarksLabel = 'justifikasi early checkout';
+            } else {
+                $rulesConfig = $outlet->getOvertimeRemarksRules();
+                $remarksLabel = 'catatan overtime';
+            }
+
+            $rules['checkout_remarks'] = [
+                'required',
+                'string',
+                'min:' . $rulesConfig['min'],
+                'max:' . $rulesConfig['max']
+            ];
+
+            // Custom error messages
+            $request->validate($rules, [
+                'checkout_remarks.required' => "{$remarksLabel} wajib diisi",
+                'checkout_remarks.min' => "{$remarksLabel} minimal {$rulesConfig['min']} karakter",
+                'checkout_remarks.max' => "{$remarksLabel} maksimal {$rulesConfig['max']} karakter"
+            ]);
+        } else {
+            $request->validate($rules);
+        }
+
         // Calculate distance from outlet for checkout
         $distance = $this->calculateDistance(
             $request->latitude,
@@ -319,20 +360,23 @@ class AttendanceController extends Controller
 
         if (!$gpsValidation['valid']) {
             return response()->json([
-                'message' => 'Tidak dapat melakukan check-out: ' . implode(', ', $gpsValidation['warnings']),
+                'message' => $gpsValidation['user_message'] ?: 'Tidak dapat melakukan check-out. Silakan coba lagi.',
                 'success' => false,
-                'risk_score' => $gpsValidation['risk_score'],
+                'error_type' => 'gps_validation',
+                'retry_suggested' => $gpsValidation['retry_suggested'] ?? false,
                 'warnings' => $gpsValidation['warnings'],
             ], 400);
         }
 
-        // Check if within geofence radius for checkout
-        if ($distance > $outlet->radius) {
+        // Check if within geofence radius for checkout - more lenient
+        if ($distance > ($outlet->radius * 1.5)) { // Allow 50% tolerance
             return response()->json([
                 'message' => "Anda terlalu jauh dari outlet untuk check-out. Jarak: " . round($distance) . "m, Diperlukan: Dalam radius {$outlet->radius}m",
                 'success' => false,
+                'error_type' => 'distance',
                 'distance' => round($distance),
-                'required_distance' => $outlet->radius
+                'required_distance' => $outlet->radius,
+                'retry_suggested' => false,
             ], 400);
         }
 
@@ -343,9 +387,11 @@ class AttendanceController extends Controller
             $validation = ImageOptimizationService::validateSelfie($request->file('selfie'));
             if (!$validation['valid']) {
                 return response()->json([
-                    'message' => 'Selfie validation failed: ' . implode(', ', $validation['errors']),
+                    'message' => 'Foto selfie tidak valid: ' . implode(', ', $validation['errors']),
                     'success' => false,
-                    'errors' => $validation['errors']
+                    'error_type' => 'selfie_validation',
+                    'errors' => $validation['errors'],
+                    'retry_suggested' => true,
                 ], 400);
             }
 
@@ -355,13 +401,15 @@ class AttendanceController extends Controller
             } catch (\Exception $e) {
                 \Log::error('Checkout selfie upload failed: ' . $e->getMessage());
                 return response()->json([
-                    'message' => 'Failed to process checkout selfie. Please try again.',
-                    'success' => false
+                    'message' => 'Gagal memproses foto check-out. Silakan coba lagi.',
+                    'success' => false,
+                    'error_type' => 'selfie_upload',
+                    'retry_suggested' => true,
                 ], 500);
             }
         }
 
-        // Update checkout time, location, and selfie data
+        // Update checkout time, location, selfie data, and remarks
         $attendance->update([
             'check_out_time' => now(),
             'check_out_latitude' => $request->latitude,
@@ -372,6 +420,9 @@ class AttendanceController extends Controller
             'check_out_thumbnail_path' => $checkoutSelfieData['thumbnail_path'] ?? null,
             'check_out_file_size' => $checkoutSelfieData['file_size'] ?? null,
             'has_check_out_selfie' => !empty($checkoutSelfieData),
+            'checkout_remarks' => $request->checkout_remarks,
+            'is_overtime' => $overtimeMinutes > 0,
+            'overtime_minutes' => $overtimeMinutes,
         ]);
 
         // Calculate work duration
@@ -427,39 +478,58 @@ class AttendanceController extends Controller
      */
     public function status()
     {
+        \Log::info('Attendance status endpoint called');
         $user = Auth::user();
+        \Log::info('User authenticated: ' . $user->id);
         
-        $todayAttendance = Attendance::where('user_id', $user->id)
-            ->with('outlet')
-            ->whereDate('created_at', today())
-            ->orderBy('created_at', 'desc')
-            ->first();
+        try {
+            $todayAttendance = Attendance::where('user_id', $user->id)
+                ->with('outlet')
+                ->whereDate('created_at', today())
+                ->orderBy('created_at', 'desc')
+                ->first();
 
-        $recentAttendances = Attendance::where('user_id', $user->id)
-            ->with('outlet')
-            ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get();
+            $recentAttendances = Attendance::where('user_id', $user->id)
+                ->with('outlet')
+                ->orderBy('created_at', 'desc')
+                ->take(10)
+                ->get();
 
-        // Get user's outlet with operational status
-        $outlet = $user->outlet;
-        
-        // Add operational status to outlet data
-        if ($outlet) {
-            $outlet->append([
-                'operational_start_time_formatted',
-                'operational_end_time_formatted',
-                'formatted_operational_hours',
-                'operational_status',
-                'formatted_work_days'
-            ]);
+            // Get user's outlet with operational status
+            $outlet = $user->outlet;
+            \Log::info('Outlet retrieved: ' . ($outlet ? $outlet->id : 'null'));
+            
+            // Add operational status to outlet data
+            if ($outlet) {
+                $outlet->append([
+                    'operational_start_time_formatted',
+                    'operational_end_time_formatted',
+                    'formatted_operational_hours',
+                    'operational_status',
+                    'formatted_work_days'
+                ]);
+                
+                // Calculate current overtime for checkout validation
+                $currentOvertimeMinutes = $outlet->calculateOvertime(now());
+                $outlet->current_overtime_minutes = $currentOvertimeMinutes;
+            }
+
+            $response = [
+                'today_attendance' => $todayAttendance,
+                'recent_attendances' => $recentAttendances,
+                'outlet' => $outlet
+            ];
+            
+            \Log::info('Returning response', $response);
+            return response()->json($response);
+        } catch (\Exception $e) {
+            \Log::error('Error in attendance status: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'error' => 'Failed to fetch attendance status',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'today_attendance' => $todayAttendance,
-            'recent_attendances' => $recentAttendances,
-            'outlet' => $outlet
-        ]);
     }
 
     /**

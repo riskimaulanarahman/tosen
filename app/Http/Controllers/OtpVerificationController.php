@@ -80,14 +80,17 @@ class OtpVerificationController extends Controller
         // Get user and outlet info for email template
         $user = User::where('email', $email)->first();
         if ($user && $user->outlet) {
+            // Load the owner relationship to avoid relationship errors
+            $user->outlet->load('owner');
+            
             // Send OTP via queue with complete template
             SendOtpEmail::dispatch(
-                $email, 
-                $otp, 
+                $email,
+                $otp,
                 null, // No password for OTP resend (verification only)
-                $user->outlet->name, 
-                $user->outlet->address, 
-                $user->outlet->owner->name
+                $user->outlet->name,
+                $user->outlet->address,
+                $user->outlet->owner ? $user->outlet->owner->name : 'System Admin'
             );
         } else {
             // Fallback for users without outlet (should not happen in normal flow)
@@ -145,14 +148,17 @@ class OtpVerificationController extends Controller
         // Get user and outlet info for email template
         $user = User::where('email', $request->email)->first();
         if ($user && $user->outlet) {
+            // Load the owner relationship to avoid relationship errors
+            $user->outlet->load('owner');
+            
             // Send OTP via queue with complete template (verification only)
             SendOtpEmail::dispatch(
-                $request->email, 
-                $otp, 
+                $request->email,
+                $otp,
                 null, // No password for OTP resend (verification only)
-                $user->outlet->name, 
-                $user->outlet->address, 
-                $user->outlet->owner->name
+                $user->outlet->name,
+                $user->outlet->address,
+                $user->outlet->owner ? $user->outlet->owner->name : 'System Admin'
             );
         } else {
             // Fallback for users without outlet (should not happen in normal flow)

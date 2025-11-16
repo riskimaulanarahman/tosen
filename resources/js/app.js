@@ -1,6 +1,8 @@
 import "../css/app.css";
 import "./bootstrap";
 import "./utils/errorHandlerTest.js";
+import "./utils/enhancedErrorHandler.js";
+import "./utils/attendanceTest.js";
 
 import { createInertiaApp } from "@inertiajs/vue3";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
