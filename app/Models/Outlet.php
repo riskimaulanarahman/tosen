@@ -470,7 +470,7 @@ class Outlet extends Model
     {
         return [
             'grace_period' => $this->grace_period_minutes ?? 5,
-            'late_tolerance' => $this->late_tolerance_minutes ?? 15,
+            'late_tolerance' => $this->late_tolerance_minutes,
             'early_checkout_tolerance' => $this->early_checkout_tolerance ?? 10,
             'overtime_threshold' => $this->overtime_threshold_minutes ?? 60,
         ];
