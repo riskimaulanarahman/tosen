@@ -12,8 +12,10 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// TOSEN-TOGA Presence Landing Page
-Route::get('/', [LandingPageController::class, 'index'])->name('landing.page');
+// Temporarily disable landing page so the app goes straight to login
+Route::get('/', function () {
+    return redirect()->route('login');
+})->name('landing.page');
 Route::post('/trial-request', [LandingPageController::class, 'requestTrial'])->name('landing.trial');
 Route::post('/demo-request', [LandingPageController::class, 'requestDemo'])->name('landing.demo');
 
