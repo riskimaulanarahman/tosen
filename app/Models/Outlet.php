@@ -469,10 +469,10 @@ class Outlet extends Model
     public function getToleranceSettingsAttribute()
     {
         return [
-            'grace_period' => $this->grace_period_minutes ?? 5,
+            'grace_period' => $this->grace_period_minutes,
             'late_tolerance' => $this->late_tolerance_minutes,
-            'early_checkout_tolerance' => $this->early_checkout_tolerance ?? 10,
-            'overtime_threshold' => $this->overtime_threshold_minutes ?? 60,
+            'early_checkout_tolerance' => $this->early_checkout_tolerance,
+            'overtime_threshold' => $this->overtime_threshold_minutes,
         ];
     }
 
