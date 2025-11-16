@@ -93,7 +93,7 @@ class Outlet extends Model
         return [
             'enabled' => true,
             'overtime' => [
-                'threshold_minutes' => 180,
+                'threshold_minutes' => 60,
                 'mandatory_remarks' => true,
                 'remarks_min_length' => 10,
                 'remarks_max_length' => 500

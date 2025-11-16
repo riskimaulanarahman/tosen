@@ -624,7 +624,6 @@ const breadcrumbItems = [
                                         v-model="form.grace_period_minutes"
                                         type="number"
                                         min="0"
-                                        max="30"
                                         class="w-full px-3 py-2 bg-surface-2 border border-border text-text rounded-none focus:outline-none focus:ring-2 focus:ring-primary"
                                         required
                                     />
@@ -650,7 +649,6 @@ const breadcrumbItems = [
                                         v-model="form.late_tolerance_minutes"
                                         type="number"
                                         min="0"
-                                        max="60"
                                         class="w-full px-3 py-2 bg-surface-2 border border-border text-text rounded-none focus:outline-none focus:ring-2 focus:ring-primary"
                                         required
                                     />
@@ -678,7 +676,6 @@ const breadcrumbItems = [
                                         v-model="form.early_checkout_tolerance"
                                         type="number"
                                         min="0"
-                                        max="60"
                                         class="w-full px-3 py-2 bg-surface-2 border border-border text-text rounded-none focus:outline-none focus:ring-2 focus:ring-primary"
                                         required
                                     />
@@ -710,7 +707,6 @@ const breadcrumbItems = [
                                         "
                                         type="number"
                                         min="0"
-                                        max="240"
                                         class="w-full px-3 py-2 bg-surface-2 border border-border text-text rounded-none focus:outline-none focus:ring-2 focus:ring-primary"
                                         required
                                     />
