@@ -64,10 +64,10 @@ class StoreOutletRequest extends FormRequest
             'work_days' => 'required|array|min:1',
             'work_days.*' => 'required|integer|between:1,7',
             'timezone' => 'required|string|timezone',
-            'late_tolerance_minutes' => 'required|integer|min:0|max:60',
-            'early_checkout_tolerance' => 'required|integer|min:0|max:60',
-            'grace_period_minutes' => 'required|integer|min:0|max:30',
-            'overtime_threshold_minutes' => 'required|integer|min:0|max:240',
+            'late_tolerance_minutes' => 'required|integer|min:0',
+            'early_checkout_tolerance' => 'required|integer|min:0',
+            'grace_period_minutes' => 'required|integer|min:0',
+            'overtime_threshold_minutes' => 'required|integer|min:0',
         ];
     }
 
