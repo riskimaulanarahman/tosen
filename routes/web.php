@@ -48,6 +48,18 @@ Route::get('/welcome', function () {
     ]);
 });
 
+Route::get('/run-worker', function () {
+    try {
+        Artisan::call('queue:work', [
+            '--stop-when-empty' => true, // langsung berhenti kalau kosong
+        ]);
+
+        return response('Executed 1 job from queue.', 200);
+    } catch (\Exception $e) {
+        return response('Error: ' . $e->getMessage(), 500);
+    }
+});
+
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
