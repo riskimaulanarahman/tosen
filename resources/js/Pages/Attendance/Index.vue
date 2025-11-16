@@ -19,10 +19,12 @@ const canCheckIn = computed(() => {
     );
 });
 
-// Check if user can check out
+// Check if user can check out - FIXED LOGIC
 const canCheckOut = computed(() => {
     return (
-        todayAttendance.value && todayAttendance.value.status === "checked_in"
+        todayAttendance.value &&
+        !todayAttendance.value.check_out_time &&
+        todayAttendance.value.status === "checked_in"
     );
 });
 
