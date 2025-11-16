@@ -6,11 +6,38 @@ use App\Http\Controllers\OtpVerificationController;
 use App\Http\Controllers\OutletController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\SyncFlowController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
+// TOSEN-TOGA Presence Landing Page
+Route::get('/', [LandingPageController::class, 'index'])->name('landing.page');
+Route::post('/trial-request', [LandingPageController::class, 'requestTrial'])->name('landing.trial');
+Route::post('/demo-request', [LandingPageController::class, 'requestDemo'])->name('landing.demo');
+
+// SyncFlow Landing Page Routes
+Route::get('/syncflow', function () {
+    return inertia('SyncFlowLanding');
+})->name('syncflow.landing');
+
+// SyncFlow API Routes
+Route::prefix('api/syncflow')->group(function () {
+    Route::post('/trial', [SyncFlowController::class, 'submitTrial'])->name('syncflow.trial');
+    Route::post('/demo', [SyncFlowController::class, 'submitDemo'])->name('syncflow.demo');
+});
+
+// SyncFlow Admin Routes (protected)
+Route::prefix('admin/syncflow')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/trials', [SyncFlowController::class, 'getTrialRequests'])->name('admin.syncflow.trials');
+    Route::get('/demos', [SyncFlowController::class, 'getDemoRequests'])->name('admin.syncflow.demos');
+    Route::put('/trials/{id}/status', [SyncFlowController::class, 'updateTrialStatus'])->name('admin.syncflow.trials.status');
+    Route::put('/demos/{id}/status', [SyncFlowController::class, 'updateDemoStatus'])->name('admin.syncflow.demos.status');
+});
+
+// Legacy welcome route (can be removed later)
+Route::get('/welcome', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),

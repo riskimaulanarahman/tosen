@@ -1,4 +1,5 @@
 @import "./theme.css";
+@import "./landing.css";
 
 @tailwind base;
 @tailwind components;
@@ -14,18 +15,15 @@
 
     /* Custom selection with gradient */
     ::selection {
-        background: linear-gradient(
-            135deg,
-            var(--color-primary-500),
-            var(--color-accent-500)
-        );
-        color: white;
+        background: var(--color-pattern-gradient);
+        color: var(--color-pattern-contrast);
     }
 
     /* Modern focus styles */
     :focus-visible {
-        outline: 2px solid var(--color-accent);
+        outline: 2px solid var(--color-pattern-strong);
         outline-offset: 2px;
+        box-shadow: 0 0 0 3px var(--color-pattern-highlight);
     }
 
     /* Smooth scrolling for better UX */
@@ -91,6 +89,30 @@
             opacity: 0.8;
         }
     }
+    /* Color pattern helpers for quick teal theming */
+    .pattern-solid {
+        background: var(--color-pattern-solid);
+        color: var(--color-pattern-contrast);
+        border-color: var(--color-pattern-solid);
+        box-shadow: var(--shadow-glow);
+    }
+
+    .pattern-soft {
+        background: var(--color-pattern-soft);
+        color: var(--color-text);
+        border-color: var(--color-pattern-border);
+    }
+
+    .pattern-gradient {
+        background-image: var(--color-pattern-gradient);
+        color: var(--color-pattern-contrast);
+        box-shadow: var(--shadow-glow-accent);
+    }
+
+    .pattern-outline {
+        border: 1px solid var(--color-pattern-border);
+        box-shadow: inset 0 0 0 1px var(--color-pattern-border);
+    }
 }
 
 @layer utilities {
@@ -126,5 +148,30 @@
 
     .backdrop-blur-xl {
         backdrop-filter: blur(24px);
+    }
+
+    .bg-pattern-soft {
+        background-color: var(--color-pattern-soft);
+    }
+
+    .bg-pattern-solid {
+        background-color: var(--color-pattern-solid);
+        color: var(--color-pattern-contrast);
+    }
+
+    .text-pattern-strong {
+        color: var(--color-pattern-strong);
+    }
+
+    .text-pattern-muted {
+        color: var(--color-pattern-muted);
+    }
+
+    .border-pattern {
+        border-color: var(--color-pattern-border);
+    }
+
+    .glow-pattern {
+        box-shadow: var(--shadow-glow);
     }
 }

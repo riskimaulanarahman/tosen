@@ -3,10 +3,19 @@ import { Head, Link, useForm } from "@inertiajs/vue3";
 import AuthLayout from "@/Layouts/AuthLayout.vue";
 import Input from "@/Components/ui/Input.vue";
 import Button from "@/Components/ui/Button.vue";
+import { getAppName } from "@/utils/appInfo";
+
+declare function route(name: string, params?: Record<string, any>): string;
 
 defineProps<{
     canLogin: boolean;
 }>();
+
+const appName = getAppName();
+const pageTitle = "Daftar";
+const layoutTitle = `Buat Akun ${appName}`;
+const layoutDescription = `Satukan absensi, shift, dan payroll dalam satu dashboard ${appName}.`;
+const termsCopy = `Dengan mendaftar, Anda menyetujui kebijakan privasi dan ketentuan layanan ${appName}.`;
 
 const form = useForm({
     name: "",
@@ -23,12 +32,9 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Daftar" />
+    <Head :title="pageTitle" />
 
-    <AuthLayout
-        title="Buat Akun Owner"
-        description="Mulai kelola outlet dan tim Anda dalam satu dashboard terpusat"
-    >
+    <AuthLayout :title="layoutTitle" :description="layoutDescription">
         <form @submit.prevent="submit" class="space-y-6">
             <Input
                 id="name"
@@ -80,11 +86,11 @@ const submit = () => {
                 type="submit"
                 variant="primary"
                 size="lg"
-                class="w-full"
+                class="w-full justify-center"
                 :disabled="form.processing"
             >
                 <span v-if="form.processing">Membuat akun...</span>
-                <span v-else>Daftar Sekarang</span>
+                <span v-else>Aktifkan akses gratis</span>
             </Button>
         </form>
 
@@ -94,14 +100,13 @@ const submit = () => {
                     Sudah punya akun?
                     <Link
                         :href="route('login')"
-                        class="ml-1 font-medium text-accent transition duration-fast hover:text-primary-400"
+                        class="ml-1 font-medium text-primary-600 transition duration-fast hover:text-primary-500"
                     >
                         Masuk di sini
                     </Link>
                 </div>
-                <p class="text-xs text-text-muted">
-                    Dengan mendaftar, Anda menyetujui kebijakan privasi dan
-                    ketentuan layanan Absensi.
+                <p class="text-xs text-text-3">
+                    {{ termsCopy }}
                 </p>
             </div>
         </template>

@@ -45,11 +45,11 @@ const togglePassword = () => {
 
 const classes = computed(() => {
     const base =
-        "w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-text placeholder-text-muted transition-all duration-fast focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed";
+        "w-full px-3 py-2 bg-surface-2 border border-border rounded-lg text-text placeholder-text-muted transition-all duration-fast focus:outline-none focus:ring-2 focus:ring-tosen-primary-400 focus:border-tosen-primary-500 disabled:opacity-50 disabled:cursor-not-allowed relative";
 
     const errorClasses = props.error
-        ? "border-error focus:ring-error"
-        : "focus:border-primary-400";
+        ? "border-tosen-error focus:ring-tosen-error animate-shake"
+        : "focus:border-tosen-primary-500 focus:ring-tosen-primary-400/30";
 
     return [base, errorClasses].join(" ");
 });
@@ -78,13 +78,13 @@ const handleBlur = (event: FocusEvent) => {
         <label
             v-if="label"
             :for="inputId"
-            class="block text-sm font-medium text-text"
+            class="block text-sm font-medium text-tosen-gray-700 transition-colors duration-fast"
         >
             {{ label }}
-            <span v-if="required" class="text-error ml-1">*</span>
+            <span v-if="required" class="text-tosen-error ml-1">*</span>
         </label>
 
-        <div class="relative">
+        <div class="relative group">
             <input
                 :id="inputId"
                 :type="inputType"
@@ -101,10 +101,17 @@ const handleBlur = (event: FocusEvent) => {
                 @blur="handleBlur"
             />
 
+            <!-- Enhanced focus indicator -->
+            <div class="absolute inset-0 rounded-lg pointer-events-none">
+                <div
+                    class="absolute inset-0 rounded-lg border-2 border-tosen-primary-300 opacity-0 transition-opacity duration-fast group-focus-within:opacity-100 scale-105 group-focus-within:translate-y-[-1px]"
+                ></div>
+            </div>
+
             <button
                 v-if="type === 'password' && showPasswordToggle"
                 type="button"
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-text-muted hover:text-text transition-colors duration-fast"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-tosen-gray-500 hover:text-tosen-primary-600 transition-colors duration-fast group-focus-within:text-tosen-primary-600"
                 @click="togglePassword"
             >
                 <svg
@@ -146,8 +153,61 @@ const handleBlur = (event: FocusEvent) => {
             </button>
         </div>
 
-        <p v-if="error" class="text-sm text-error">
-            {{ error }}
-        </p>
+        <!-- Enhanced error message with animation -->
+        <div v-if="error" class="flex items-start space-x-2 animate-slideDown">
+            <svg
+                class="w-4 h-4 text-tosen-error mt-0.5 flex-shrink-0"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+            >
+                <path
+                    fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clip-rule="evenodd"
+                />
+            </svg>
+            <p class="text-sm text-tosen-error">{{ error }}</p>
+        </div>
     </div>
 </template>
+
+<style scoped>
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-2px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(2px);
+    }
+}
+
+.animate-slideDown {
+    animation: slideDown 0.3s ease-out;
+}
+
+.animate-shake {
+    animation: shake 0.5s ease-in-out;
+}
+</style>

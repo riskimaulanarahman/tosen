@@ -8,7 +8,10 @@ interface Props {
         | "ghost"
         | "danger"
         | "success"
-        | "gradient";
+        | "gradient"
+        | "accent"
+        | "info"
+        | "warning";
     size?: "sm" | "md" | "lg" | "xl";
     disabled?: boolean;
     type?: "button" | "submit" | "reset";
@@ -42,39 +45,65 @@ const classes = computed(() => {
 
     const variants = {
         primary: [
-            "bg-gradient-to-r from-primary-500 to-primary-600 text-white",
-            "hover:from-primary-600 hover:to-primary-700",
-            "focus-visible:ring-primary-500",
-            "shadow-lg hover:shadow-xl shadow-primary-500/25",
+            "bg-gradient-primary text-white",
+            "hover:opacity-95",
+            "focus-visible:ring-primary-400",
+            "shadow-glow hover:shadow-glow-accent",
+            "relative overflow-hidden",
         ],
         secondary: [
-            "bg-surface-1 text-text border border-border",
-            "hover:bg-surface-2 hover:border-primary-500",
-            "focus-visible:ring-primary-500",
+            "bg-surface-1 text-primary-700 border-2 border-primary-300",
+            "hover:bg-primary-50 hover:text-primary-800 hover:border-primary-400",
+            "focus-visible:ring-primary-400",
             "shadow-sm hover:shadow-md",
+            "relative overflow-hidden",
         ],
         ghost: [
-            "text-text hover:bg-surface-2",
-            "focus-visible:ring-primary-500",
+            "text-primary-600 hover:bg-primary-50 hover:text-primary-700",
+            "focus-visible:ring-primary-300",
+            "relative overflow-hidden",
         ],
         danger: [
             "bg-gradient-to-r from-error-500 to-error-600 text-white",
             "hover:from-error-600 hover:to-error-700",
-            "focus-visible:ring-error-500",
-            "shadow-lg hover:shadow-xl shadow-error-500/25",
+            "focus-visible:ring-error-400",
+            "shadow-lg hover:shadow-xl",
+            "relative overflow-hidden",
         ],
         success: [
             "bg-gradient-to-r from-success-500 to-success-600 text-white",
             "hover:from-success-600 hover:to-success-700",
-            "focus-visible:ring-success-500",
-            "shadow-lg hover:shadow-xl shadow-success-500/25",
+            "focus-visible:ring-success-400",
+            "shadow-lg hover:shadow-xl",
+            "relative overflow-hidden",
+        ],
+        accent: [
+            "bg-gradient-to-r from-accent-500 to-accent-600 text-white",
+            "hover:from-accent-600 hover:to-accent-600/90",
+            "focus-visible:ring-accent-500",
+            "shadow-lg hover:shadow-xl",
+            "relative overflow-hidden",
+        ],
+        info: [
+            "bg-gradient-to-r from-info-500 to-info-600 text-white",
+            "hover:from-info-600 hover:to-info-700",
+            "focus-visible:ring-info-500",
+            "shadow-lg hover:shadow-xl",
+            "relative overflow-hidden",
+        ],
+        warning: [
+            "bg-gradient-to-r from-warning-500 to-warning-600 text-white",
+            "hover:from-warning-600 hover:to-warning-700",
+            "focus-visible:ring-warning-500",
+            "shadow-lg hover:shadow-xl",
+            "relative overflow-hidden",
         ],
         gradient: [
             "bg-gradient-to-r from-primary-500 via-accent-500 to-primary-600 text-white",
             "hover:from-primary-600 hover:via-accent-600 hover:to-primary-700",
             "focus-visible:ring-accent-500",
-            "shadow-xl hover:shadow-2xl shadow-accent-500/25",
-            "animate-pulse-glow",
+            "shadow-xl hover:shadow-2xl",
+            "animate-pulse-glow relative overflow-hidden",
         ],
     };
 
@@ -101,7 +130,7 @@ const classes = computed(() => {
         ...base,
         ...variants[props.variant],
         props.icon ? iconSizes[props.size] : sizes[props.size],
-        roundedClasses[String(props.rounded)],
+        roundedClasses[props.rounded ? "true" : "false"],
         props.loading ? "cursor-wait" : "cursor-pointer",
     ].join(" ");
 });
@@ -120,15 +149,20 @@ const handleClick = (event: MouseEvent) => {
         :disabled="disabled || loading"
         @click="handleClick"
     >
-        <!-- Ripple effect overlay -->
+        <!-- Enhanced ripple effect overlay -->
         <div
-            class="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-fast rounded-inherit"
+            class="absolute inset-0 bg-white opacity-0 group-hover:opacity-15 transition-opacity duration-fast rounded-inherit"
         ></div>
 
-        <!-- Loading spinner -->
+        <!-- Shimmer effect for all variants -->
+        <div
+            class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-slow rounded-inherit"
+        ></div>
+
+        <!-- Loading spinner with vibrant teal -->
         <svg
             v-if="loading"
-            class="animate-spin -ml-1 mr-2 h-4 w-4"
+            class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -152,14 +186,17 @@ const handleClick = (event: MouseEvent) => {
         <slot name="icon" v-if="$slots.icon && !loading" />
 
         <!-- Button content -->
-        <span :class="{ 'ml-2': $slots.icon && !loading }">
+        <span
+            :class="{ 'ml-2': $slots.icon && !loading }"
+            class="relative z-10"
+        >
             <slot />
         </span>
 
-        <!-- Shine effect for gradient variant -->
+        <!-- Enhanced shine effect for gradient variant -->
         <div
             v-if="variant === 'gradient'"
-            class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-slow"
+            class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-slow rounded-inherit"
         ></div>
     </button>
 </template>
