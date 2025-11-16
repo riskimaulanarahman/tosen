@@ -93,20 +93,20 @@ class Outlet extends Model
         return [
             'enabled' => true,
             'overtime' => [
-                'threshold_minutes' => 60,
+                // 'threshold_minutes' => 60,
                 'mandatory_remarks' => true,
                 'remarks_min_length' => 10,
                 'remarks_max_length' => 500
             ],
             'early_checkout' => [
                 'enabled' => true,
-                'threshold_minutes' => 240,
+                // 'threshold_minutes' => 240,
                 'mandatory_remarks' => true,
                 'remarks_min_length' => 10,
                 'remarks_max_length' => 300
             ],
             'advanced' => [
-                'max_daily_overtime' => 480,
+                // 'max_daily_overtime' => 480,
                 'weekend_multiplier' => 1.5,
                 'holiday_multiplier' => 2.0,
                 'auto_calculate_overtime' => true,
