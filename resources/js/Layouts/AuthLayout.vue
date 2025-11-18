@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-    getAppInitials,
-    getAppName,
-    getCurrentYear,
-} from "@/utils/appInfo";
+import { getAppInitials, getAppName, getCurrentYear } from "@/utils/appInfo";
 
 interface Props {
     title?: string;
@@ -138,7 +134,7 @@ const trustMetrics = [
                 class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10"
             >
                 <div class="w-full max-w-md space-y-6">
-                    <div
+                    <!-- <div
                         class="lg:hidden flex items-center justify-center gap-4"
                     >
                         <div
@@ -156,7 +152,7 @@ const trustMetrics = [
                                 {{ appName }}
                             </p>
                         </div>
-                    </div>
+                    </div> -->
 
                     <div
                         class="bg-surface-0/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-border"

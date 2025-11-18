@@ -214,7 +214,7 @@ const submit = () => {
 
         <template #footer>
             <div class="space-y-6">
-                <div class="grid grid-cols-2 gap-4 mb-6">
+                <!-- <div class="grid grid-cols-2 gap-4 mb-6">
                     <a
                         href="#"
                         class="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface-0 px-4 py-4 text-text transition-all duration-fast hover:border-primary-200 hover:text-primary-600"
@@ -257,7 +257,7 @@ const submit = () => {
                             >Hubungi Dukungan</span
                         >
                     </a>
-                </div>
+                </div> -->
 
                 <div class="text-center">
                     <Link
