@@ -93,14 +93,14 @@ class Outlet extends Model
         return [
             'enabled' => true,
             'overtime' => [
-                // 'threshold_minutes' => 60,
+                'threshold_minutes' => $this->overtime_threshold_minutes ?? 60,
                 'mandatory_remarks' => true,
                 'remarks_min_length' => 10,
                 'remarks_max_length' => 500
             ],
             'early_checkout' => [
                 'enabled' => true,
-                // 'threshold_minutes' => 240,
+                'threshold_minutes' => $this->early_checkout_tolerance ?? 240,
                 'mandatory_remarks' => true,
                 'remarks_min_length' => 10,
                 'remarks_max_length' => 300
@@ -121,10 +121,23 @@ class Outlet extends Model
     public function requiresOvertimeRemarks($overtimeMinutes)
     {
         $config = $this->overtime_config;
-        return $config['enabled'] && 
-               isset($config['overtime']) &&
-               $config['overtime']['mandatory_remarks'] && 
-               $overtimeMinutes >= $config['overtime']['threshold_minutes'];
+        if (
+            empty($config['enabled']) ||
+            !isset($config['overtime']) ||
+            empty($config['overtime']['mandatory_remarks'])
+        ) {
+            return false;
+        }
+
+        $threshold = $config['overtime']['threshold_minutes']
+            ?? $this->overtime_threshold_minutes
+            ?? null;
+
+        if ($threshold === null) {
+            return false;
+        }
+
+        return $overtimeMinutes >= (int) $threshold;
     }
 
     /**
@@ -133,11 +146,24 @@ class Outlet extends Model
     public function requiresEarlyCheckoutRemarks($workDurationMinutes)
     {
         $config = $this->overtime_config;
-        return $config['enabled'] && 
-               isset($config['early_checkout']) &&
-               $config['early_checkout']['enabled'] && 
-               $config['early_checkout']['mandatory_remarks'] && 
-               $workDurationMinutes < $config['early_checkout']['threshold_minutes'];
+        if (
+            empty($config['enabled']) ||
+            !isset($config['early_checkout']) ||
+            empty($config['early_checkout']['enabled']) ||
+            empty($config['early_checkout']['mandatory_remarks'])
+        ) {
+            return false;
+        }
+
+        $threshold = $config['early_checkout']['threshold_minutes']
+            ?? $this->early_checkout_tolerance
+            ?? null;
+
+        if ($threshold === null) {
+            return false;
+        }
+
+        return $workDurationMinutes < (int) $threshold;
     }
 
     /**
@@ -146,10 +172,23 @@ class Outlet extends Model
     public function shouldShowEarlyCheckoutWarning($workDurationMinutes)
     {
         $config = $this->overtime_config;
-        return $config['enabled'] && 
-               isset($config['early_checkout']) &&
-               $config['early_checkout']['enabled'] && 
-               $workDurationMinutes < $config['early_checkout']['threshold_minutes'];
+        if (
+            empty($config['enabled']) ||
+            !isset($config['early_checkout']) ||
+            empty($config['early_checkout']['enabled'])
+        ) {
+            return false;
+        }
+
+        $threshold = $config['early_checkout']['threshold_minutes']
+            ?? $this->early_checkout_tolerance
+            ?? null;
+
+        if ($threshold === null) {
+            return false;
+        }
+
+        return $workDurationMinutes < (int) $threshold;
     }
 
     /**

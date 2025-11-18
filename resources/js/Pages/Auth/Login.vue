@@ -261,7 +261,7 @@ const submit = () => {
 
                 <div class="text-center">
                     <Link
-                        :href="route('verification.notice')"
+                        :href="route('verification.otp.notice')"
                         class="text-primary-600 hover:text-primary-500 transition-colors duration-fast text-sm font-medium inline-flex items-center justify-center gap-2"
                     >
                         <svg

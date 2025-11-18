@@ -248,7 +248,7 @@ class PivotTableTest extends TestCase
             ->get(route('reports.export.pivot'));
 
         $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'text/csv');
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
         $response->assertHeader('Content-Disposition');
     }
 }

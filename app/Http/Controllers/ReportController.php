@@ -53,6 +53,20 @@ class ReportController extends Controller
         $attendances = $attendancesQuery->orderBy('created_at', 'desc')
             ->paginate(50);
 
+        // Append selfie URLs to attendance records
+        $attendances->getCollection()->transform(function ($attendance) {
+            $attendance->append([
+                'check_in_selfie_url',
+                'check_out_selfie_url',
+                'check_in_thumbnail_url',
+                'check_out_thumbnail_url',
+                'check_in_file_size_formatted',
+                'check_out_file_size_formatted',
+                'selfie_deletion_status'
+            ]);
+            return $attendance;
+        });
+
         // Statistics
         $stats = [
             'total_attendances' => $attendancesQuery->count(),
@@ -219,6 +233,114 @@ class ReportController extends Controller
                 'outlet_id' => $selectedOutlet,
                 'date_from' => $dateFrom->format('Y-m-d'),
                 'date_to' => $dateTo->format('Y-m-d'),
+            ],
+        ]);
+    }
+
+    /**
+     * Provide a simplified selfie review feed for owners.
+     */
+    public function selfieFeed(Request $request)
+    {
+        $user = Auth::user();
+
+        $filters = [
+            'outlet_id' => $request->input('outlet_id'),
+            'date' => $request->input('date'),
+            'search' => $request->input('search'),
+        ];
+
+        $outlets = Outlet::where('owner_id', $user->id)
+            ->orderBy('name')
+            ->get();
+
+        $baseQuery = Attendance::with(['user', 'user.outlet'])
+            ->whereHas('user', function ($query) use ($user) {
+                $query->whereHas('outlet', function ($subQuery) use ($user) {
+                    $subQuery->where('owner_id', $user->id);
+                });
+            })
+            ->where(function ($query) {
+                $query->whereNotNull('check_in_selfie_path')
+                    ->orWhereNotNull('check_out_selfie_path');
+            });
+
+        if (!empty($filters['outlet_id'])) {
+            $baseQuery->whereHas('user', function ($query) use ($filters) {
+                $query->where('outlet_id', $filters['outlet_id']);
+            });
+        }
+
+        if (!empty($filters['date'])) {
+            $date = Carbon::parse($filters['date']);
+            $baseQuery->whereBetween('check_in_time', [
+                $date->copy()->startOfDay(),
+                $date->copy()->endOfDay(),
+            ]);
+        }
+
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $baseQuery->whereHas('user', function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $attendances = (clone $baseQuery)
+            ->orderByDesc('check_in_time')
+            ->paginate(24);
+
+        $attendances->getCollection()->transform(function ($attendance) {
+            $attendance->append([
+                'check_in_selfie_url',
+                'check_out_selfie_url',
+                'check_in_thumbnail_url',
+                'check_out_thumbnail_url',
+                'check_in_file_size_formatted',
+                'check_out_file_size_formatted',
+                'selfie_deletion_status',
+            ]);
+
+            return [
+                'id' => $attendance->id,
+                'user' => [
+                    'id' => $attendance->user->id,
+                    'name' => $attendance->user->name,
+                    'email' => $attendance->user->email,
+                    'outlet' => optional($attendance->user->outlet)->name,
+                ],
+                'check_in_time' => optional($attendance->check_in_time)?->toIso8601String(),
+                'check_out_time' => optional($attendance->check_out_time)?->toIso8601String(),
+                'check_in_selfie_url' => $attendance->check_in_selfie_url,
+                'check_out_selfie_url' => $attendance->check_out_selfie_url,
+                'check_in_thumbnail_url' => $attendance->check_in_thumbnail_url,
+                'check_out_thumbnail_url' => $attendance->check_out_thumbnail_url,
+                'check_in_file_size_formatted' => $attendance->check_in_file_size_formatted,
+                'check_out_file_size_formatted' => $attendance->check_out_file_size_formatted,
+                'selfie_deletion_status' => $attendance->selfie_deletion_status,
+            ];
+        });
+
+        $statsQuery = clone $baseQuery;
+        $stats = [
+            'total_records' => (clone $statsQuery)->count(),
+            'with_check_in_selfie' => (clone $statsQuery)->whereNotNull('check_in_selfie_path')->count(),
+            'with_check_out_selfie' => (clone $statsQuery)->whereNotNull('check_out_selfie_path')->count(),
+            'with_both' => (clone $statsQuery)
+                ->whereNotNull('check_in_selfie_path')
+                ->whereNotNull('check_out_selfie_path')
+                ->count(),
+        ];
+
+        return inertia('Reports/SelfieFeed', [
+            'attendances' => $attendances,
+            'outlets' => $outlets,
+            'stats' => $stats,
+            'filters' => [
+                'outlet_id' => $filters['outlet_id'],
+                'date' => $filters['date'],
+                'search' => $filters['search'],
             ],
         ]);
     }

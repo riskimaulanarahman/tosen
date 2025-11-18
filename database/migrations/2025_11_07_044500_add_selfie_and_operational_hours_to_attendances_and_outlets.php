@@ -20,6 +20,14 @@ return new class extends Migration
                 $table->decimal('check_out_accuracy', 8, 2)->nullable()->after('check_out_longitude');
             }
 
+            if (!Schema::hasColumn('attendances', 'check_in_file_size')) {
+                $table->integer('check_in_file_size')->nullable()->after('notes');
+            }
+
+            if (!Schema::hasColumn('attendances', 'check_out_file_size')) {
+                $table->integer('check_out_file_size')->nullable()->after('check_in_file_size');
+            }
+
             if (!Schema::hasColumn('attendances', 'has_check_in_selfie')) {
                 $table->boolean('has_check_in_selfie')->default(false)->after('check_in_file_size');
             }

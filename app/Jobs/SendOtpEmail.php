@@ -166,7 +166,7 @@ class SendOtpEmail implements ShouldQueue
 
                 <!-- Verification Link -->
                 <div style='text-align: center; margin-bottom: 20px;'>
-                    <a href='" . route('verification.notice', ['email' => $this->email]) . "' style='display: inline-block; background-color: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;'>🔐 Verify Email & Set Password</a>
+                    <a href='" . route('verification.otp.notice', ['email' => $this->email]) . "' style='display: inline-block; background-color: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;'>🔐 Verify Email & Set Password</a>
                 </div>
 
                 <!-- Login Button -->

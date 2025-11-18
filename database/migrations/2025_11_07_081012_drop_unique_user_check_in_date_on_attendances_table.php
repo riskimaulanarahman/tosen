@@ -16,7 +16,9 @@ return new class extends Migration
         }
 
         Schema::table('attendances', function (Blueprint $table) {
-            $table->dropUnique('attendances_user_date_unique');
+            if (Schema::hasIndex('attendances', 'attendances_user_date_unique')) {
+                $table->dropUnique('attendances_user_date_unique');
+            }
         });
     }
 
@@ -25,12 +27,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (!Schema::hasTable('attendances') || !Schema::hasColumn('attendances', 'check_in_date')) {
-            return;
-        }
-
-        Schema::table('attendances', function (Blueprint $table) {
-            $table->unique(['user_id', 'check_in_date'], 'attendances_user_date_unique');
-        });
+        // Unique constraint deliberately not restored to keep schema simpler
+        return;
     }
 };

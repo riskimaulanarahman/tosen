@@ -4,6 +4,7 @@ import { Head, Link, router } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
 import Button from "@/Components/ui/Button.vue";
+import SelfieModal from "@/Components/SelfieModal.vue";
 
 const props = defineProps({
     attendances: Object,
@@ -73,6 +74,19 @@ const viewPivot = () => {
     window.location.href = route("reports.pivot") + "?" + params.toString();
 };
 
+const viewSelfieFeed = () => {
+    const params = new URLSearchParams();
+    Object.keys(searchParams.value).forEach((key) => {
+        if (searchParams.value[key]) {
+            params.append(key, searchParams.value[key]);
+        }
+    });
+
+    const query = params.toString();
+    window.location.href =
+        route("reports.selfies") + (query ? `?${query}` : "");
+};
+
 const formatDate = (date) => {
     return new Date(date).toLocaleDateString("id-ID", {
         year: "numeric",
@@ -122,6 +136,24 @@ const getStatusText = (status) => {
             return status;
     }
 };
+
+// Selfie modal state
+const showSelfieModal = ref(false);
+const selectedAttendance = ref(null);
+
+const openSelfieModal = (attendance) => {
+    selectedAttendance.value = attendance;
+    showSelfieModal.value = true;
+};
+
+const closeSelfieModal = () => {
+    showSelfieModal.value = false;
+    selectedAttendance.value = null;
+};
+
+const hasSelfie = (attendance) => {
+    return attendance.check_in_selfie_url || attendance.check_out_selfie_url;
+};
 </script>
 
 <template>
@@ -141,6 +173,30 @@ const getStatusText = (status) => {
                     <p class="text-muted">Analisis data absensi karyawan</p>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <Button @click="viewSelfieFeed" variant="secondary">
+                        <svg
+                            class="w-4 h-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M3 7h4l2-3h6l2 3h4v12H3z"
+                            />
+                            <circle
+                                cx="12"
+                                cy="13"
+                                r="3"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                fill="none"
+                            />
+                        </svg>
+                        Mode Selfie
+                    </Button>
                     <Button @click="viewPivot" variant="secondary">
                         <svg
                             class="w-4 h-4 mr-2"
@@ -337,6 +393,11 @@ const getStatusText = (status) => {
                                 <th
                                     class="px-6 py-3 text-left text-xs font-medium text-text-3 uppercase tracking-wider"
                                 >
+                                    Foto Selfie
+                                </th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-text-3 uppercase tracking-wider"
+                                >
                                     Status
                                 </th>
                             </tr>
@@ -396,6 +457,80 @@ const getStatusText = (status) => {
                                 <td class="px-6 py-4">
                                     <div class="text-sm text-text-3">
                                         {{ formatDuration(attendance) }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div
+                                        v-if="hasSelfie(attendance)"
+                                        class="flex items-center space-x-2"
+                                    >
+                                        <button
+                                            @click="openSelfieModal(attendance)"
+                                            class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                                        >
+                                            <svg
+                                                class="w-4 h-4 mr-1"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                />
+                                            </svg>
+                                            Lihat Foto
+                                        </button>
+                                        <div
+                                            class="flex items-center space-x-1 text-xs text-text-3"
+                                        >
+                                            <svg
+                                                v-if="
+                                                    attendance.check_in_selfie_url
+                                                "
+                                                class="w-3 h-3 text-success"
+                                                fill="currentColor"
+                                                viewBox="0 0 20 20"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                            <svg
+                                                v-if="
+                                                    attendance.check_out_selfie_url
+                                                "
+                                                class="w-3 h-3 text-success"
+                                                fill="currentColor"
+                                                viewBox="0 0 20 20"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-xs text-muted">
+                                        <svg
+                                            class="w-4 h-4 inline mr-1"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                            />
+                                        </svg>
+                                        Tidak ada foto
                                     </div>
                                 </td>
                                 <td class="px-6 py-4">
@@ -461,6 +596,13 @@ const getStatusText = (status) => {
                     </template>
                 </div>
             </Card>
+
+            <!-- Selfie Modal -->
+            <SelfieModal
+                :show="showSelfieModal"
+                :attendance="selectedAttendance"
+                @close="closeSelfieModal"
+            />
         </div>
     </AuthenticatedLayout>
 </template>

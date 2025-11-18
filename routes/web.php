@@ -105,13 +105,14 @@ Route::middleware(['auth', 'owner'])->group(function () {
     Route::get('/reports/export', [App\Http\Controllers\ReportController::class, 'export'])->name('reports.export');
     Route::get('/reports/export-pivot', [App\Http\Controllers\ReportController::class, 'exportPivot'])->name('reports.export.pivot');
     Route::get('/reports/summary', [App\Http\Controllers\ReportController::class, 'summary'])->name('reports.summary');
+    Route::get('/reports/selfies', [App\Http\Controllers\ReportController::class, 'selfieFeed'])->name('reports.selfies');
 });
 
 // OTP Verification routes
 Route::middleware('guest')->prefix('verification')->group(function () {
-    Route::get('/notice', [OtpVerificationController::class, 'show'])->name('verification.notice');
-    Route::post('/send', [OtpVerificationController::class, 'send'])->middleware('throttle:5,1')->name('verification.send');
-    Route::post('/verify', [OtpVerificationController::class, 'verify'])->name('verification.verify');
+    Route::get('/notice', [OtpVerificationController::class, 'show'])->name('verification.otp.notice');
+    Route::post('/send', [OtpVerificationController::class, 'send'])->middleware('throttle:5,1')->name('verification.otp.send');
+    Route::post('/verify', [OtpVerificationController::class, 'verify'])->name('verification.otp.verify');
 });
 
 

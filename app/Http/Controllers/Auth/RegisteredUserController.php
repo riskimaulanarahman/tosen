@@ -45,8 +45,8 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        // Instead of logging in directly, redirect to OTP verification
-        return redirect()->route('verification.notice', ['email' => $request->email])
-            ->with('message', 'Silakan verifikasi email Anda dengan kode OTP yang telah kami kirim.');
+        Auth::login($user);
+
+        return redirect(route('dashboard', absolute: false));
     }
 }

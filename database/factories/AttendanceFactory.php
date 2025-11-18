@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Attendance;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,7 +18,7 @@ class AttendanceFactory extends Factory
      */
     public function definition(): array
     {
-        $checkInDate = fake()->dateTimeBetween('-1 month', 'now');
+        $checkInDate = Carbon::instance(fake()->dateTimeBetween('-1 month', 'now'));
         $checkInTime = (clone $checkInDate)->setTime(8, 0, 0);
         $checkOutTime = (clone $checkInTime)->addHours(9)->addMinutes(rand(0, 30));
         

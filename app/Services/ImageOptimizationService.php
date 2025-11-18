@@ -29,8 +29,10 @@ class ImageOptimizationService
      */
     public static function generateThumbnail(string $imagePath): ?string
     {
+        $disk = Storage::disk('public');
+
         try {
-            $fullPath = storage_path('app/public/' . $imagePath);
+            $fullPath = $disk->path($imagePath);
             if (!file_exists($fullPath)) {
                 return null;
             }
@@ -40,7 +42,7 @@ class ImageOptimizationService
             $thumbnailData = self::encodeJpeg($thumbnail, 60);
 
             $thumbnailPath = str_replace('selfies/', 'selfies/thumbnails/', $imagePath);
-            Storage::put('public/' . $thumbnailPath, $thumbnailData);
+            $disk->put($thumbnailPath, $thumbnailData);
 
             return $thumbnailPath;
         } catch (\Exception $e) {
@@ -54,6 +56,8 @@ class ImageOptimizationService
      */
     public static function storeSelfie(UploadedFile $uploadedFile, string $type = 'checkin'): array
     {
+        $disk = Storage::disk('public');
+
         try {
             // Optimize image
             $optimizedImage = self::optimizeSelfie($uploadedFile);
@@ -63,24 +67,24 @@ class ImageOptimizationService
             $path = 'selfies/' . $filename;
 
             // Ensure directories exist
-            Storage::makeDirectory('public/selfies');
-            Storage::makeDirectory('public/selfies/thumbnails');
+            $disk->makeDirectory('selfies');
+            $disk->makeDirectory('selfies/thumbnails');
 
             // Store optimized image
-            Storage::put('public/' . $path, $optimizedImage);
+            $disk->put($path, $optimizedImage);
 
             // Generate thumbnail
             $thumbnailPath = self::generateThumbnail($path);
 
             // Calculate file size
-            $fileSize = Storage::size('public/' . $path);
+            $fileSize = $disk->size($path);
 
             return [
                 'path' => $path,
                 'thumbnail_path' => $thumbnailPath,
                 'file_size' => $fileSize,
-                'url' => Storage::url($path),
-                'thumbnail_url' => $thumbnailPath ? Storage::url($thumbnailPath) : null,
+                'url' => $disk->url($path),
+                'thumbnail_url' => $thumbnailPath ? $disk->url($thumbnailPath) : null,
             ];
         } catch (\Exception $e) {
             \Log::error('Failed to store selfie: ' . $e->getMessage());
@@ -135,13 +139,15 @@ class ImageOptimizationService
         if (!$path) {
             return true;
         }
+
+        $disk = Storage::disk('public');
         
         try {
-            $deleted = Storage::delete('public/' . $path);
+            $deleted = $disk->delete($path);
             
             // Delete thumbnail if exists
             $thumbnailPath = str_replace('selfies/', 'selfies/thumbnails/', $path);
-            Storage::delete('public/' . $thumbnailPath);
+            $disk->delete($thumbnailPath);
             
             return $deleted;
         } catch (\Exception $e) {
@@ -156,7 +162,7 @@ class ImageOptimizationService
     public static function getStorageStats(): array
     {
         try {
-            $selfiePath = storage_path('app/public/selfies');
+            $selfiePath = Storage::disk('public')->path('selfies');
             $totalSize = 0;
             $fileCount = 0;
             

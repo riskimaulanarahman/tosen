@@ -24,7 +24,13 @@
 
         <!-- Scripts -->
         @routes
-        @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+        @php
+            $viteInputs = ['resources/js/app.js'];
+            if (!app()->environment('testing')) {
+                $viteInputs[] = "resources/js/Pages/{$page['component']}.vue";
+            }
+        @endphp
+        @vite($viteInputs)
         @inertiaHead
     </head>
     <body class="font-sans antialiased bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-full">

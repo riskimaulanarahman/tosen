@@ -29,14 +29,14 @@ class EnsureEmailIsVerified
         // Check if email is verified - only redirect if not recently verified
         if (is_null($user->email_verified_at)) {
             // Check if this is a verification route to prevent infinite loop
-            if (!$request->routeIs('verification.notice') && !$request->routeIs('verification.verify')) {
+            if (!$request->routeIs('verification.notice', 'verification.verify', 'verification.otp.notice', 'verification.otp.verify')) {
                 // Log out user since they need to verify first
                 Auth::guard('web')->logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
                 
                 // Redirect to verification page with email and message
-                return redirect()->route('verification.notice', ['email' => $user->email])
+                return redirect()->route('verification.otp.notice', ['email' => $user->email])
                     ->with('message', 'Your email address needs to be verified before you can access this page. Please check your email for the OTP verification code.')
                     ->with('message_type', 'warning');
             }

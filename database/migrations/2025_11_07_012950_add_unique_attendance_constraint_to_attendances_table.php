@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -12,18 +13,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('attendances', function (Blueprint $table) {
-            // Add date column for unique constraint (derived from check_in_time)
-            $table->date('check_in_date')->after('check_in_time')->index();
-            
-            // Add composite index for performance optimization
-            $table->index(['user_id', 'check_in_time'], 'attendances_user_date_index');
-            
-            // Add unique constraint to prevent duplicate check-ins on the same day
-            $table->unique(['user_id', 'check_in_date'], 'attendances_user_date_unique');
+            if (!Schema::hasColumn('attendances', 'check_in_date')) {
+                // Store derived check-in date for reporting needs
+                $table->date('check_in_date')->nullable()->after('check_in_time');
+                $table->index('check_in_date', 'attendances_check_in_date_index');
+                return;
+            }
+
+            if (!Schema::hasIndex('attendances', 'attendances_check_in_date_index')) {
+                $table->index('check_in_date', 'attendances_check_in_date_index');
+            }
         });
         
-        // Update existing records to set check_in_date from check_in_time (after table modification)
-        \DB::statement('UPDATE attendances SET check_in_date = DATE(check_in_time) WHERE check_in_date IS NULL');
+        if (Schema::hasColumn('attendances', 'check_in_date')) {
+            // Update existing records to set check_in_date from check_in_time (after table modification)
+            \DB::statement('UPDATE attendances SET check_in_date = DATE(check_in_time) WHERE check_in_date IS NULL');
+        }
     }
 
     /**
@@ -31,13 +36,36 @@ return new class extends Migration
      */
     public function down(): void
     {
+        $connection = Schema::getConnection()->getDriverName();
+
+        if ($connection === 'sqlite') {
+            $indexes = [
+                'attendances_check_in_date_index',
+            ];
+
+            foreach ($indexes as $index) {
+                DB::statement(sprintf('DROP INDEX IF EXISTS "%s"', $index));
+            }
+
+            if (Schema::hasColumn('attendances', 'check_in_date')) {
+                Schema::table('attendances', function (Blueprint $table) {
+                    $table->dropColumn('check_in_date');
+                });
+            }
+
+            return;
+        }
+
         Schema::table('attendances', function (Blueprint $table) {
-            // Drop indexes and constraints
-            $table->dropUnique('attendances_user_date_unique');
-            $table->dropIndex('attendances_user_date_index');
-            
-            // Drop the check_in_date column
-            $table->dropColumn('check_in_date');
+            // Drop indexes and constraints only if they exist
+            if (Schema::hasIndex('attendances', 'attendances_check_in_date_index')) {
+                $table->dropIndex('attendances_check_in_date_index');
+            }
+           
+            // Drop the check_in_date column if it exists
+            if (Schema::hasColumn('attendances', 'check_in_date')) {
+                $table->dropColumn('check_in_date');
+            }
         });
     }
 };

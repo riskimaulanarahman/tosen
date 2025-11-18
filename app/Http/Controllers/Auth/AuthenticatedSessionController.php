@@ -44,7 +44,7 @@ class AuthenticatedSessionController extends Controller
             $request->session()->regenerateToken();
             
             // Redirect to verification page with email
-            return redirect()->route('verification.notice', ['email' => $request->email])
+            return redirect()->route('verification.otp.notice', ['email' => $request->email])
                 ->with('message', 'Your email address needs to be verified before you can log in. Please check your email for the OTP verification code.')
                 ->with('message_type', 'warning');
         }

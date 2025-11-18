@@ -52,7 +52,6 @@ return new class extends Migration
                 'checkout_remarks',
                 'has_check_in_selfie', 
                 'has_check_out_selfie',
-                'check_in_date',
                 'is_overtime'
             ];
             

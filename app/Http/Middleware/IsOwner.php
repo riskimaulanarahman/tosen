@@ -19,12 +19,16 @@ class IsOwner
         $user = Auth::user();
         
         // Check if user is authenticated and is an owner
-        if (!$user || !$user->isOwner()) {
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Unauthorized access. Owner privileges required.');
+        }
+
+        if (!$user->isOwner()) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Unauthorized. Owner access required.'], 403);
             }
-            
-            return redirect()->route('login')->with('error', 'Unauthorized access. Owner privileges required.');
+
+            abort(403, 'Unauthorized access. Owner privileges required.');
         }
 
         return $next($request);

@@ -37,7 +37,7 @@ const sendOtp = async () => {
 
     isLoading.value = true;
     try {
-        const response = await axios.post(route("verification.send"), {
+        const response = await axios.post(route("verification.otp.send"), {
             email: email.value,
         });
 
@@ -67,7 +67,7 @@ const sendOtp = async () => {
 const resendOtp = async () => {
     isLoading.value = true;
     try {
-        const response = await axios.post(route("verification.send"), {
+        const response = await axios.post(route("verification.otp.send"), {
             email: email.value,
         });
 
@@ -124,7 +124,7 @@ const verifyOtp = async () => {
 
     isLoading.value = true;
     try {
-        const response = await axios.post(route("verification.verify"), {
+        const response = await axios.post(route("verification.otp.verify"), {
             email: email.value,
             otp: otp.value,
             password: newPassword.value,

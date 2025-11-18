@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -34,11 +35,28 @@ class EmailVerificationTest extends TestCase
             ['id' => $user->id, 'hash' => sha1($user->email)]
         );
 
-        $response = $this->actingAs($user)->get($verificationUrl);
+        // Debug: Check the verification URL
+        $request = Request::create($verificationUrl);
+        $this->assertTrue(URL::hasValidSignature($request), 'Verification URL should have valid signature');
 
-        Event::assertDispatched(Verified::class);
-        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+        // Ensure user is authenticated
+        $this->actingAs($user);
+        $this->assertAuthenticatedAs($user);
+
+        $response = $this->get($verificationUrl);
+
+        // Debug: Check response status and content
+        $response->dump();
+        
+        // Debug: Check if user was actually verified
+        $freshUser = $user->fresh();
+        $this->assertTrue($freshUser->hasVerifiedEmail(), 'User email should be verified');
+        
+        // Debug: Check response status
+        $response->assertStatus(302);
         $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+        
+        Event::assertDispatched(Verified::class);
     }
 
     public function test_email_is_not_verified_with_invalid_hash(): void
