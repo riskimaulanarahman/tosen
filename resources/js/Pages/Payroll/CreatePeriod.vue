@@ -56,7 +56,7 @@ const createPeriodForm = useForm({
     name: "",
     start_date: "",
     end_date: "",
-    basic_rate: 5000000,
+    basic_rate: "",
     overtime_rate: 1.5,
     notes: "",
     user_ids: [],
