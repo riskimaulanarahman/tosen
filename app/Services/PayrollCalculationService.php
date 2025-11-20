@@ -92,9 +92,13 @@ class PayrollCalculationService
             }
         }
 
+        // Normalize optional overrides
+        $normalizedPeriodBase = ($periodBaseRate === '' || $periodBaseRate === null) ? null : $periodBaseRate;
+        $normalizedPeriodOvertime = ($periodOvertimeRate === '' || $periodOvertimeRate === null) ? null : $periodOvertimeRate;
+
         // Calculate base salary (monthly) and overtime rate, honoring period overrides
-        $baseSalary = self::getBaseSalary($user, $outlet, $periodBaseRate);
-        $overtimeRate = self::getOvertimeRate($outlet, $periodOvertimeRate);
+        $baseSalary = self::getBaseSalary($user, $outlet, $normalizedPeriodBase);
+        $overtimeRate = self::getOvertimeRate($outlet, $normalizedPeriodOvertime);
 
         // Pro-rate base pay by working days instead of multiplying by total hours
         $targetWorkDays = self::calculateWorkingDays($startDate, $endDate);
@@ -195,13 +199,16 @@ class PayrollCalculationService
         DB::beginTransaction();
         
         try {
+            $normalizedBasicRate = ($basicRate === '' || $basicRate === null) ? 0 : $basicRate;
+            $normalizedOvertimeRate = ($overtimeRate === '' || $overtimeRate === null) ? 1.5 : $overtimeRate;
+
             // Create payroll period
             $payrollPeriod = PayrollPeriod::create([
                 'name' => $name,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-                'basic_rate' => $basicRate ?? 5000000, // Default 5 juta
-                'overtime_rate' => $overtimeRate ?? 1.5, // Default 1.5x
+                'basic_rate' => $normalizedBasicRate, // Default 0
+                'overtime_rate' => $normalizedOvertimeRate, // Default 1.5x
                 'status' => 'active',
             ]);
 
