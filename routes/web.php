@@ -60,6 +60,16 @@ Route::get('/run-worker', function () {
     }
 });
 
+Route::get('/storage-link', function () {
+    try {
+        Artisan::call('storage:link');
+
+        return response('Done.', 200);
+    } catch (\Exception $e) {
+        return response('Error: ' . $e->getMessage(), 500);
+    }
+});
+
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
