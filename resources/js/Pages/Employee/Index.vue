@@ -424,34 +424,54 @@ onMounted(() => {
                                                     stroke-linecap="round"
                                                     stroke-linejoin="round"
                                                     stroke-width="2"
-                                                    d="M7 7h10M7 7l3-3m-3 3l3 3M17 17H7m10 0l-3-3m3 3l-3 3"
-                                                />
-                                            </svg>
-                                        </button>
-                                        <button
-                                            @click="resendEmail(employee)"
-                                            class="text-success hover:text-success/2"
-                                            title="Kirim Ulang Email"
+                                                d="M7 7h10M7 7l3-3m-3 3l3 3M17 17H7m10 0l-3-3m3 3l-3 3"
+                                            />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        v-if="!employee.email_verified_at"
+                                        @click="resendEmail(employee)"
+                                        class="text-success hover:text-success/2"
+                                        title="Kirim Ulang Email"
+                                    >
+                                        <svg
+                                            class="w-4 h-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
                                         >
-                                            <svg
-                                                class="w-4 h-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M3 8l7.89 7.89a3 3 0 1 1 -4.24 0l-7.89-7.89a3 3 0 1 1 4.24 0z"
-                                                />
-                                            </svg>
-                                        </button>
-                                        <Link
-                                            :href="
-                                                route(
-                                                    'employees.edit',
-                                                    employee.id
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M3 8l7.89 7.89a3 3 0 1 1 -4.24 0l-7.89-7.89a3 3 0 1 1 4.24 0z"
+                                            />
+                                        </svg>
+                                    </button>
+                                    <span
+                                        v-else
+                                        class="text-text-3 cursor-not-allowed"
+                                        title="Email sudah diverifikasi"
+                                    >
+                                        <svg
+                                            class="w-4 h-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M5 13l4 4L19 7"
+                                            />
+                                        </svg>
+                                    </span>
+                                    <Link
+                                        :href="
+                                            route(
+                                                'employees.edit',
+                                                employee.id
                                                 )
                                             "
                                             class="text-info hover:text-info/2"
