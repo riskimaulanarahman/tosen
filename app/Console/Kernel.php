@@ -35,6 +35,12 @@ class Kernel extends ConsoleKernel
             ->monthlyOn(1, '04:00')
             ->withoutOverlapping()
             ->runInBackground();
+
+        // Auto checkout after overtime threshold; record checkout at operational closing time
+        $schedule->command('attendance:auto-checkout')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

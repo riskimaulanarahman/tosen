@@ -9,6 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\SyncFlowController;
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -50,6 +51,7 @@ Route::get('/welcome', function () {
 
 Route::get('/run-worker', function () {
     try {
+
         Artisan::call('queue:work', [
             '--stop-when-empty' => true, // langsung berhenti kalau kosong
         ]);
@@ -60,11 +62,12 @@ Route::get('/run-worker', function () {
     }
 });
 
-Route::get('/storage-link', function () {
+Route::get('/auto-checkout', function () {
     try {
-        Artisan::call('storage:link');
+        // Run auto-checkout in dry-run mode to preview actions
+        Artisan::call('attendance:auto-checkout', ['--dry-run' => true]);
 
-        return response('Done.', 200);
+        return response('Executed 1 job from queue.', 200);
     } catch (\Exception $e) {
         return response('Error: ' . $e->getMessage(), 500);
     }
