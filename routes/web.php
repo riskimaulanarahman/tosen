@@ -65,7 +65,7 @@ Route::get('/run-worker', function () {
 Route::get('/auto-checkout', function () {
     try {
         // Run auto-checkout in dry-run mode to preview actions
-        Artisan::call('attendance:auto-checkout', ['--dry-run' => true]);
+        Artisan::call('attendance:auto-checkout');
 
         return response('Executed 1 job from queue.', 200);
     } catch (\Exception $e) {
