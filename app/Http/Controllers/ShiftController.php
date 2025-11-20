@@ -26,7 +26,11 @@ class ShiftController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $ownedOutletIds = Outlet::where('owner_id', $user->id)->pluck('id');
         $outletId = $request->get('outlet_id');
+        if ($outletId && !$ownedOutletIds->contains($outletId)) {
+            abort(403, 'Unauthorized');
+        }
         $dateFrom = $request->get('date_from') ? \Carbon\Carbon::parse($request->get('date_from')) : now()->startOfMonth();
         $dateTo = $request->get('date_to') ? \Carbon\Carbon::parse($request->get('date_to')) : now()->endOfMonth();
 
@@ -35,6 +39,9 @@ class ShiftController extends Controller
         
         // Get shift schedules
         $shiftSchedules = ShiftSchedule::with(['shift', 'outlet'])
+            ->whereHas('outlet', function ($query) use ($ownedOutletIds) {
+                $query->whereIn('id', $ownedOutletIds);
+            })
             ->when($outletId, function ($query) use ($outletId) {
                 return $query->where('outlet_id', $outletId);
             })
@@ -44,6 +51,9 @@ class ShiftController extends Controller
 
         // Get employee shifts
         $employeeShifts = EmployeeShift::with(['user', 'shift'])
+            ->whereHas('user.outlet', function ($query) use ($ownedOutletIds) {
+                $query->whereIn('id', $ownedOutletIds);
+            })
             ->when($outletId, function ($query) use ($outletId) {
                 return $query->whereHas('user', function ($subQuery) use ($outletId) {
                     $subQuery->where('outlet_id', $outletId);
@@ -76,11 +86,18 @@ class ShiftController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $ownedOutletIds = Outlet::where('owner_id', $user->id)->pluck('id');
         $outletId = $request->get('outlet_id');
+        if ($outletId && !$ownedOutletIds->contains($outletId)) {
+            abort(403, 'Unauthorized');
+        }
         $dateFrom = $request->get('date_from') ? \Carbon\Carbon::parse($request->get('date_from')) : now()->startOfMonth();
         $dateTo = $request->get('date_to') ? \Carbon\Carbon::parse($request->get('date_to')) : now()->endOfMonth();
 
         $shiftSchedules = ShiftSchedule::with(['shift', 'outlet'])
+            ->whereHas('outlet', function ($query) use ($ownedOutletIds) {
+                $query->whereIn('id', $ownedOutletIds);
+            })
             ->when($outletId, function ($query) use ($outletId) {
                 return $query->where('outlet_id', $outletId);
             })
@@ -89,7 +106,10 @@ class ShiftController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $outlets = Outlet::select('id', 'name')->orderBy('name')->get();
+        $outlets = Outlet::select('id', 'name')
+            ->whereIn('id', $ownedOutletIds)
+            ->orderBy('name')
+            ->get();
 
         return inertia('Shift/Schedule', [
             'shiftSchedules' => $shiftSchedules,
@@ -113,9 +133,16 @@ class ShiftController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $ownedOutletIds = Outlet::where('owner_id', $user->id)->pluck('id');
         $outletId = $request->get('outlet_id');
+        if ($outletId && !$ownedOutletIds->contains($outletId)) {
+            abort(403, 'Unauthorized');
+        }
 
         $employeeShifts = EmployeeShift::with(['user', 'shift'])
+            ->whereHas('user.outlet', function ($query) use ($ownedOutletIds) {
+                $query->whereIn('id', $ownedOutletIds);
+            })
             ->when($outletId, function ($query) use ($outletId) {
                 return $query->whereHas('user', function ($subQuery) use ($outletId) {
                     $subQuery->where('outlet_id', $outletId);
@@ -126,6 +153,9 @@ class ShiftController extends Controller
             ->withQueryString();
 
         $employees = User::where('role', 'employee')
+            ->whereHas('outlet', function ($query) use ($ownedOutletIds) {
+                $query->whereIn('id', $ownedOutletIds);
+            })
             ->select('id', 'name', 'email', 'outlet_id')
             ->orderBy('name')
             ->get();
@@ -138,7 +168,10 @@ class ShiftController extends Controller
             'break_duration',
         ]);
 
-        $outlets = Outlet::select('id', 'name')->orderBy('name')->get();
+        $outlets = Outlet::select('id', 'name')
+            ->whereIn('id', $ownedOutletIds)
+            ->orderBy('name')
+            ->get();
 
         return inertia('Shift/Assignment', [
             'employeeShifts' => $employeeShifts,
@@ -234,12 +267,18 @@ class ShiftController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $ownedOutletIds = Outlet::where('owner_id', $user->id)->pluck('id');
+
         $request->validate([
             'outlet_id' => 'required|exists:outlets,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'notes' => 'nullable|string|max:500',
         ]);
+
+        if (!$ownedOutletIds->contains($request->outlet_id)) {
+            abort(403, 'Unauthorized');
+        }
 
         $result = ShiftSchedulingService::generateShiftSchedule(
             $request->outlet_id,
@@ -267,6 +306,8 @@ class ShiftController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $ownedOutletIds = Outlet::where('owner_id', $user->id)->pluck('id');
+
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'shift_id' => 'required|exists:shifts,id',
@@ -274,6 +315,16 @@ class ShiftController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'notes' => 'nullable|string|max:500',
         ]);
+
+        $employee = User::where('id', $request->user_id)
+            ->whereHas('outlet', function ($query) use ($ownedOutletIds) {
+                $query->whereIn('id', $ownedOutletIds);
+            })
+            ->first();
+
+        if (!$employee) {
+            abort(403, 'Unauthorized');
+        }
 
         $result = ShiftSchedulingService::assignEmployeeToShift(
             $request->user_id,
@@ -387,10 +438,14 @@ class ShiftController extends Controller
         }
 
         $outletId = $request->get('outlet_id');
+        $ownedOutletIds = Outlet::where('owner_id', $user->id)->pluck('id');
+        if ($outletId && !$ownedOutletIds->contains($outletId)) {
+            abort(403, 'Unauthorized');
+        }
         $startDate = $request->get('start_date') ? \Carbon\Carbon::parse($request->get('start_date')) : now()->startOfMonth();
         $endDate = $request->get('end_date') ? \Carbon\Carbon::parse($request->get('end_date')) : now()->endOfMonth();
 
-        $result = ShiftSchedulingService::getShiftStatistics($outletId, $startDate, $endDate);
+        $result = ShiftSchedulingService::getShiftStatistics($outletId, $startDate, $endDate, $user->id);
 
         return inertia('Shift/Statistics', [
             'statistics' => $result['statistics'],

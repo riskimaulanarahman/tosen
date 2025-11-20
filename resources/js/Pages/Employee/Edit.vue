@@ -16,6 +16,7 @@ const form = useForm({
     password: "",
     password_confirmation: "",
     outlet_id: props.employee.outlet_id,
+    base_salary: props.employee.base_salary || "",
 });
 
 const submit = () => {
@@ -199,6 +200,25 @@ const submit = () => {
 
                         <!-- Right Column -->
                         <div class="space-y-6">
+                            <div>
+                                <label class="block text-text-3 text-sm font-medium mb-2">
+                                    Gaji Pokok (per bulan)
+                                </label>
+                                <input
+                                    v-model.number="form.base_salary"
+                                    type="number"
+                                    min="0"
+                                    class="w-full px-3 py-2 bg-surface-1 border border-border text-text rounded-none focus:outline-none focus:ring-2 focus:ring-primary"
+                                    placeholder="Contoh: 2000000"
+                                />
+                                <div v-if="form.errors.base_salary" class="mt-1 text-sm text-error">
+                                    {{ form.errors.base_salary }}
+                                </div>
+                                <p class="text-xs text-muted mt-1">
+                                    Opsional. Kosongkan untuk memakai basic rate periode/outlet.
+                                </p>
+                            </div>
+
                             <!-- Outlet Assignment -->
                             <div>
                                 <label

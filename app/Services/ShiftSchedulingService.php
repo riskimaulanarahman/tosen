@@ -378,9 +378,18 @@ class ShiftSchedulingService
     /**
      * Get shift statistics for outlet.
      */
-    public static function getShiftStatistics(?int $outletId, Carbon $startDate, Carbon $endDate): array
+    public static function getShiftStatistics(?int $outletId, Carbon $startDate, Carbon $endDate, ?int $ownerId = null): array
     {
         $shifts = Shift::withCount('employeeShifts')
+            ->when($ownerId, function ($query) use ($ownerId) {
+                $query->whereHas('employeeShifts', function ($subQuery) use ($ownerId) {
+                    $subQuery->whereHas('user', function ($innerQuery) use ($ownerId) {
+                        $innerQuery->whereHas('outlet', function ($outletQuery) use ($ownerId) {
+                            $outletQuery->where('owner_id', $ownerId);
+                        });
+                    });
+                });
+            })
             ->when($outletId, function ($query) use ($outletId) {
                 $query->whereHas('employeeShifts', function ($subQuery) use ($outletId) {
                     $subQuery->whereHas('user', function ($innerQuery) use ($outletId) {
@@ -394,6 +403,13 @@ class ShiftSchedulingService
         
         foreach ($shifts as $shift) {
             $assignments = EmployeeShift::where('shift_id', $shift->id)
+                ->when($ownerId, function ($query) use ($ownerId) {
+                    $query->whereHas('user', function ($subQuery) use ($ownerId) {
+                        $subQuery->whereHas('outlet', function ($outletQuery) use ($ownerId) {
+                            $outletQuery->where('owner_id', $ownerId);
+                        });
+                    });
+                })
                 ->when($outletId, function ($query) use ($outletId) {
                     $query->whereHas('user', function ($subQuery) use ($outletId) {
                         $subQuery->where('outlet_id', $outletId);
@@ -407,7 +423,7 @@ class ShiftSchedulingService
                 'total_assignments' => $assignments->count(),
                 'unique_employees' => $assignments->pluck('user_id')->unique()->count(),
                 'avg_assignments_per_week' => self::calculateAverageAssignments($assignments),
-                'coverage_percentage' => self::calculateShiftCoverage($shift, $outletId, $startDate, $endDate),
+                'coverage_percentage' => self::calculateShiftCoverage($shift, $outletId, $startDate, $endDate, $ownerId),
             ];
         }
         
@@ -436,7 +452,7 @@ class ShiftSchedulingService
     /**
      * Calculate shift coverage percentage.
      */
-    private static function calculateShiftCoverage(Shift $shift, ?int $outletId, Carbon $startDate, Carbon $endDate): float
+    private static function calculateShiftCoverage(Shift $shift, ?int $outletId, Carbon $startDate, Carbon $endDate, ?int $ownerId = null): float
     {
         $totalDays = 0;
         $coveredDays = 0;
@@ -451,6 +467,13 @@ class ShiftSchedulingService
                 
                 // Check if shift is covered on this day
                 $isCovered = EmployeeShift::where('shift_id', $shift->id)
+                    ->when($ownerId, function ($query) use ($ownerId) {
+                        $query->whereHas('user', function ($subQuery) use ($ownerId) {
+                            $subQuery->whereHas('outlet', function ($outletQuery) use ($ownerId) {
+                                $outletQuery->where('owner_id', $ownerId);
+                            });
+                        });
+                    })
                     ->when($outletId, function ($query) use ($outletId) {
                         $query->whereHas('user', function ($subQuery) use ($outletId) {
                             $subQuery->where('outlet_id', $outletId);

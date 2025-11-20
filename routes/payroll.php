@@ -15,6 +15,7 @@ Route::middleware(['auth', 'owner'])->group(function () {
     // Payroll generation routes
     Route::post('/payroll/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
     Route::get('/payroll/{payrollPeriod}/show', [PayrollController::class, 'show'])->name('payroll.show');
+    Route::put('/payroll/records/{payrollRecord}/adjust', [PayrollController::class, 'adjustRecord'])->name('payroll.record.adjust');
     
     // Payroll approval routes
     Route::post('/payroll/{payrollPeriod}/approve', [PayrollController::class, 'approve'])->name('payroll.approve');
@@ -23,4 +24,7 @@ Route::middleware(['auth', 'owner'])->group(function () {
     // Payroll statistics routes
     Route::get('/payroll/statistics', [PayrollController::class, 'statistics'])->name('payroll.statistics');
     Route::get('/payroll/{payrollPeriod}/export', [PayrollController::class, 'export'])->name('payroll.export');
+    Route::get('/payroll/{payrollPeriod}/export-summary', [PayrollController::class, 'exportSummary'])->name('payroll.export.summary');
+    Route::get('/payroll/records/{payrollRecord}/slip', [PayrollController::class, 'exportSlip'])->name('payroll.record.slip');
+    Route::get('/payroll/records/{payrollRecord}/slip/print', [PayrollController::class, 'printSlip'])->name('payroll.record.slip.print');
 });

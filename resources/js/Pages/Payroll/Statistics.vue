@@ -22,6 +22,21 @@ const filterForm = ref({
     end_date: props.filters?.end_date || "",
 });
 
+const formatDate = (value) => {
+    if (!value) return "-";
+    const datePart =
+        typeof value === "string"
+            ? value.split("T")[0].split(" ")[0]
+            : value;
+    const date = new Date(`${datePart}T00:00:00`);
+    return new Intl.DateTimeFormat("id-ID", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "Asia/Jakarta",
+    }).format(date);
+};
+
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return "Rp 0";
     return new Intl.NumberFormat("id-ID", {
@@ -236,10 +251,12 @@ const resetFilters = () => {
                         <p class="text-sm text-muted">
                             Periode:
                             {{
-                                statistics.payroll_period?.start_date || "-"
+                                formatDate(statistics.payroll_period?.start_date)
                             }}
                             s/d
-                            {{ statistics.payroll_period?.end_date || "-" }}
+                            {{
+                                formatDate(statistics.payroll_period?.end_date)
+                            }}
                         </p>
                     </div>
 
@@ -342,8 +359,8 @@ const resetFilters = () => {
                                         >Periode</span
                                     >
                                     <span class="font-semibold text-text">
-                                        {{ filterForm.start_date || "-" }} →
-                                        {{ filterForm.end_date || "-" }}
+                                        {{ formatDate(filterForm.start_date) }} →
+                                        {{ formatDate(filterForm.end_date) }}
                                     </span>
                                 </div>
                             </div>

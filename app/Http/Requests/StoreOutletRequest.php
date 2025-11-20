@@ -38,6 +38,8 @@ class StoreOutletRequest extends FormRequest
                 'regex:/^-?\d{1,3}\.\d{1,6}$/'
             ],
             'radius' => 'required|integer|min:10|max:1000',
+            'default_salary' => 'nullable|numeric|min:0',
+            'use_tax' => 'nullable|boolean',
             'operational_start_time' => 'required|date_format:H:i',
             'operational_end_time' => [
                 'required',

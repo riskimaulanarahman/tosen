@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
-import { Head, Link, useForm } from "@inertiajs/vue3";
+import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Card from "@/Components/ui/Card.vue";
 import Button from "@/Components/ui/Button.vue";
@@ -26,6 +26,11 @@ const breadcrumbItems = [
     { name: "Manajemen Penggajian", href: route("payroll.index") },
     { name: "Buat Payroll" },
 ];
+
+const page = usePage();
+const flash = computed(() => page.props.flash || {});
+const partialErrors = computed(() => flash.value?.payroll_partial_errors || []);
+const showHelp = ref(false);
 
 const employeeFilter = ref("");
 const outletFilter = ref("");
@@ -63,6 +68,21 @@ const generatePayrollForm = useForm({
     end_date: "",
     user_ids: [],
 });
+
+const formatDate = (value) => {
+    if (!value) return "-";
+    const datePart =
+        typeof value === "string"
+            ? value.split("T")[0].split(" ")[0]
+            : value;
+    const date = new Date(`${datePart}T00:00:00`);
+    return new Intl.DateTimeFormat("id-ID", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "Asia/Jakarta",
+    }).format(date);
+};
 
 const toggleEmployee = (id, targetForm = "create") => {
     const form =
@@ -118,10 +138,56 @@ const recentDraftPeriods = computed(() =>
                         payroll terjadwal.
                     </p>
                 </div>
-                <Button variant="secondary" :href="route('payroll.index')">
-                    Kembali ke daftar
-                </Button>
+                <div class="flex flex-wrap gap-2 justify-end">
+                    <Button variant="ghost" @click="showHelp = !showHelp">
+                        {{ showHelp ? "Tutup Help" : "Help" }}
+                    </Button>
+                    <Button variant="secondary" :href="route('payroll.index')">
+                        Kembali ke daftar
+                    </Button>
+                </div>
             </div>
+
+            <div
+                v-if="flash?.success"
+                class="bg-success-900/20 border border-success-700 text-success-100 p-4 rounded-lg"
+            >
+                {{ flash.success }}
+            </div>
+            <div
+                v-if="flash?.error"
+                class="bg-danger-900/20 border border-danger-700 text-danger-100 p-4 rounded-lg"
+            >
+                {{ flash.error }}
+            </div>
+            <div
+                v-if="partialErrors.length"
+                class="bg-yellow-100 border border-yellow-300 text-yellow-900 p-4 rounded-lg"
+            >
+                <p class="font-semibold mb-2">Sebagian payroll gagal dibuat:</p>
+                <ul class="list-disc ml-4 space-y-1">
+                    <li v-for="item in partialErrors" :key="item.user_id">
+                        {{
+                            props.employees.find((e) => e.id === item.user_id)?.name ||
+                            `ID ${item.user_id}`
+                        }}
+                        — {{ item.error }}
+                    </li>
+                </ul>
+            </div>
+
+            <Card v-if="showHelp">
+                <div class="p-4 space-y-2 text-sm text-text">
+                    <p class="font-semibold">Panduan pengisian:</p>
+                    <ul class="list-disc ml-5 space-y-1 text-muted">
+                        <li>Isi nama periode, tanggal mulai/akhir, basic rate, dan overtime rate (pengali lembur).</li>
+                        <li>Tanpa memilih karyawan, sistem otomatis menyertakan semua karyawan yang dimiliki.</li>
+                        <li>Pilih karyawan di tabel; tombol "Periode" untuk membuat periode baru sekaligus payroll, tombol "Generate" untuk menambah payroll pada periode yang sudah ada.</li>
+                        <li>Jika tidak isi tanggal di form Generate, sistem memakai rentang tanggal periode terpilih.</li>
+                        <li>Periksa pesan error parsial bila ada karyawan yang gagal diproses (misal tidak ada data absensi).</li>
+                    </ul>
+                </div>
+            </Card>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
@@ -223,11 +289,7 @@ const recentDraftPeriods = computed(() =>
                                     :value="period.id"
                                 >
                                     {{ period.name }} ·
-                                    {{
-                                        new Date(
-                                            period.start_date
-                                        ).toLocaleDateString("id-ID")
-                                    }}
+                                    {{ formatDate(period.start_date) }}
                                 </option>
                             </select>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -414,17 +476,8 @@ const recentDraftPeriods = computed(() =>
                                     {{ period.name }}
                                 </p>
                                 <p class="text-xs text-muted">
-                                    {{
-                                        new Date(
-                                            period.start_date
-                                        ).toLocaleDateString("id-ID")
-                                    }}
-                                    -
-                                    {{
-                                        new Date(
-                                            period.end_date
-                                        ).toLocaleDateString("id-ID")
-                                    }}
+                                    {{ formatDate(period.start_date) }} -
+                                    {{ formatDate(period.end_date) }}
                                 </p>
                                 <span
                                     class="inline-flex mt-2 px-2 py-1 rounded-full text-xs"

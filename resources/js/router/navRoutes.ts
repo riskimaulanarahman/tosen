@@ -65,32 +65,32 @@ const ownerRoutes: NavItem[] = [
     //         },
     //     ],
     // },
-    // {
-    //     name: "Manajemen Penggajian",
-    //     href: "/payroll",
-    //     icon: "M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm6-4V7a1 1 0 01-1 1h-4a1 1 0 01-1 1h-4a1 1 0 01-1-1z",
-    //     roles: ["owner"],
-    //     children: [
-    //         {
-    //             name: "Daftar Payroll",
-    //             href: "/payroll",
-    //             icon: "M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm6-4V7a1 1 0 01-1 1h-4a1 1 0 01-1 1h-4a1 1 0 01-1-1z",
-    //             roles: ["owner"],
-    //         },
-    //         {
-    //             name: "Buat Payroll",
-    //             href: "/payroll/create-period",
-    //             icon: "M12 4v16a1 1 0 011-1h4a1 1 0 011-1v-9a1 1 0 011-1h-4a1 1 0 01-1-1z",
-    //             roles: ["owner"],
-    //         },
-    //         {
-    //             name: "Statistik Payroll",
-    //             href: "/payroll/statistics",
-    //             icon: "M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm6-4V7a1 1 0 01-1 1h-4a1 1 0 01-1 1h-4a1 1 0 01-1-1z",
-    //             roles: ["owner"],
-    //         },
-    //     ],
-    // },
+    {
+        name: "Manajemen Penggajian",
+        href: "/payroll",
+        icon: "M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm6-4V7a1 1 0 01-1 1h-4a1 1 0 01-1 1h-4a1 1 0 01-1-1z",
+        roles: ["owner"],
+        children: [
+            {
+                name: "Daftar Payroll",
+                href: "/payroll",
+                icon: "M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm6-4V7a1 1 0 01-1 1h-4a1 1 0 01-1 1h-4a1 1 0 01-1-1z",
+                roles: ["owner"],
+            },
+            {
+                name: "Buat Payroll",
+                href: "/payroll/create-period",
+                icon: "M12 4v16a1 1 0 011-1h4a1 1 0 011-1v-9a1 1 0 011-1h-4a1 1 0 01-1-1z",
+                roles: ["owner"],
+            },
+            {
+                name: "Statistik Payroll",
+                href: "/payroll/statistics",
+                icon: "M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v6a2 2 0 002 2zm6-4V7a1 1 0 01-1 1h-4a1 1 0 01-1 1h-4a1 1 0 01-1-1z",
+                roles: ["owner"],
+            },
+        ],
+    },
     {
         name: "Laporan",
         href: "/reports",

@@ -71,6 +71,7 @@ class PayrollPeriod extends Model
             'draft' => 'bg-gray-100 text-gray-800',
             'active' => 'bg-blue-100 text-blue-800',
             'completed' => 'bg-green-100 text-green-800',
+            'paid' => 'bg-info-100 text-info-800',
             'archived' => 'bg-yellow-100 text-yellow-800',
         ];
 
@@ -86,6 +87,7 @@ class PayrollPeriod extends Model
             'draft' => 'Draft',
             'active' => 'Active',
             'completed' => 'Completed',
+            'paid' => 'Paid',
             'archived' => 'Archived',
         ];
 

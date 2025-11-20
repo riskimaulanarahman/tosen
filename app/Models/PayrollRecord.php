@@ -23,6 +23,8 @@ class PayrollRecord extends Model
         'notes',
         'approved_at',
         'paid_at',
+        'payment_method',
+        'payment_reference',
     ];
 
     protected $casts = [

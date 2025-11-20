@@ -20,6 +20,7 @@ const props = defineProps({
 const page = usePage();
 const flash = computed(() => page.props.flash || {});
 const periods = computed(() => props.payrollPeriods || { data: [], links: [] });
+const showHelp = ref(false);
 
 const breadcrumbItems = [
     { name: "Dashboard", href: route("dashboard") },
@@ -28,10 +29,25 @@ const breadcrumbItems = [
 
 const filterForm = ref({
     outlet_id: props.filters?.outlet_id || "",
-    status: props.filters?.status || "active",
+    status: props.filters?.status || "",
     date_from: props.filters?.date_from || "",
     date_to: props.filters?.date_to || "",
 });
+
+const formatDate = (value) => {
+    if (!value) return "-";
+    const datePart =
+        typeof value === "string"
+            ? value.split("T")[0].split(" ")[0]
+            : value;
+    const date = new Date(`${datePart}T00:00:00`);
+    return new Intl.DateTimeFormat("id-ID", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "Asia/Jakarta",
+    }).format(date);
+};
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return "Rp 0";
@@ -52,7 +68,7 @@ const applyFilters = () => {
 const resetFilters = () => {
     filterForm.value = {
         outlet_id: "",
-        status: "active",
+        status: "",
         date_from: "",
         date_to: "",
     };
@@ -97,9 +113,14 @@ const deletePeriod = (period) => {
                         pembayaran
                     </p>
                 </div>
-                <Link :href="route('payroll.create.page')">
-                    <Button>Tambah Periode</Button>
-                </Link>
+                <div class="flex flex-wrap gap-2 justify-end">
+                    <Button variant="secondary" @click="showHelp = !showHelp">
+                        {{ showHelp ? "Tutup Help" : "Help" }}
+                    </Button>
+                    <Link :href="route('payroll.create.page')">
+                        <Button>Tambah Periode</Button>
+                    </Link>
+                </div>
             </div>
 
             <div
@@ -114,6 +135,19 @@ const deletePeriod = (period) => {
             >
                 {{ flash.error }}
             </div>
+
+            <Card v-if="showHelp">
+                <div class="p-4 space-y-2 text-sm text-text">
+                    <p class="font-semibold">Panduan singkat:</p>
+                    <ul class="list-disc ml-5 space-y-1 text-muted">
+                        <li>Gunakan filter ID Outlet, Status, dan tanggal untuk menyaring periode yang relevan.</li>
+                        <li>Status alur: <strong>active</strong> → <strong>completed</strong> (approve) → <strong>paid</strong> (process payments).</li>
+                        <li>Klik "Tambah Periode" untuk membuat periode baru sekaligus meng-generate payroll.</li>
+                        <li>Tombol "Detail" membuka rincian, approve, ekspor CSV, dan proses pembayaran.</li>
+                        <li>Periode berstatus paid tidak dapat dihapus.</li>
+                    </ul>
+                </div>
+            </Card>
 
             <Card>
                 <div class="p-4 space-y-4">
@@ -280,8 +314,9 @@ const deletePeriod = (period) => {
                                                 </p>
                                                 <p class="text-xs text-muted">
                                                     Mulai
-                                                    {{ period.start_date }} s/d
-                                                    {{ period.end_date }}
+                                                    {{ formatDate(period.start_date) }}
+                                                    s/d
+                                                    {{ formatDate(period.end_date) }}
                                                 </p>
                                             </div>
                                         </td>

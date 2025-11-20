@@ -27,6 +27,14 @@ class Outlet extends Model
         'overtime_threshold_minutes',
         'owner_id',
         'overtime_config',
+        'default_salary',
+        'use_tax',
+    ];
+
+    protected $casts = [
+        'work_days' => 'array',
+        'use_tax' => 'boolean',
+        'default_salary' => 'decimal:2',
     ];
 
     protected $appends = [

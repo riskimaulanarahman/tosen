@@ -64,6 +64,7 @@ class EmployeeManagementController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
+            'base_salary' => 'nullable|numeric|min:0',
             'outlet_id' => [
                 'required',
                 'integer',
@@ -74,6 +75,8 @@ class EmployeeManagementController extends Controller
         ], [
             'outlet_id.exists' => 'Selected outlet is invalid.',
         ]);
+
+        $validated['base_salary'] = $request->filled('base_salary') ? $request->base_salary : null;
 
         // Get outlet information
         $outlet = Outlet::find($validated['outlet_id']);
@@ -86,6 +89,7 @@ class EmployeeManagementController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'outlet_id' => $validated['outlet_id'],
+            'base_salary' => $validated['base_salary'] ?? null,
             'role' => 'employee',
             'email_verified_at' => null, // Will be verified later
             'password' => Hash::make($tempPassword),
@@ -182,6 +186,7 @@ class EmployeeManagementController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($employee->id),
             ],
+            'base_salary' => 'nullable|numeric|min:0',
             'outlet_id' => [
                 'required',
                 'integer',
@@ -192,6 +197,8 @@ class EmployeeManagementController extends Controller
         ], [
             'outlet_id.exists' => 'Selected outlet is invalid.',
         ]);
+
+        $validated['base_salary'] = $request->filled('base_salary') ? $request->base_salary : null;
 
         // Only update password if provided
         if (!empty($request->password)) {
