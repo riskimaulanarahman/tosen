@@ -483,7 +483,7 @@ const submitAdjustment = () => {
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="mb-2 flex flex-col gap-2">
-                                            <Link
+                                            <a
                                                 :href="
                                                     route(
                                                         'payroll.record.slip',
@@ -503,7 +503,7 @@ const submitAdjustment = () => {
                                                 >
                                                     Lihat Slip
                                                 </Button>
-                                            </Link>
+                                            </a>
                                         </div>
                                         <div
                                             v-if="editingId === record.id"

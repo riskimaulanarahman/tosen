@@ -46,6 +46,54 @@
     </style>
 </head>
 <body>
+    @php
+        $baseSalary = $record->base_salary ?? 0;
+        $overtimePay = $record->overtime_pay ?? 0;
+        $bonus = $record->bonus ?? 0;
+        $leaveDeduction = $record->leave_deduction ?? 0;
+        $otherDeductions = $record->other_deductions ?? 0;
+        $taxDeduction = $record->tax_deduction ?? 0;
+
+        // Timezone outlet (fallback ke app timezone)
+        $tz = optional(optional($record->user)->outlet)->timezone ?? config('app.timezone');
+        $formatDate = function ($date) use ($tz) {
+            if (!$date) {
+                return '-';
+            }
+            $carbon = $date instanceof \Carbon\Carbon ? $date : \Carbon\Carbon::parse($date);
+            return $carbon->copy()->setTimezone($tz)->format('d M Y');
+        };
+        $formatDateTime = function ($date) use ($tz) {
+            if (!$date) {
+                return '-';
+            }
+            $carbon = $date instanceof \Carbon\Carbon ? $date : \Carbon\Carbon::parse($date);
+            return $carbon->copy()->setTimezone($tz)->format('d M Y H:i');
+        };
+
+        // Periode & hari kerja (Senin–Jumat) dengan timezone outlet
+        $periodStart = (optional($record->payrollPeriod)->start_date ?? now())->copy()->setTimezone($tz);
+        $periodEnd = (optional($record->payrollPeriod)->end_date ?? now())->copy()->setTimezone($tz);
+        $periodDays = $periodStart->copy()->startOfDay()->diffInDays($periodEnd->copy()->startOfDay()) + 1;
+
+        $targetWorkDays = 0;
+        foreach (\Carbon\CarbonPeriod::create($periodStart->copy()->startOfDay(), $periodEnd->copy()->startOfDay()) as $date) {
+            if (! $date->isWeekend()) {
+                $targetWorkDays++;
+            }
+        }
+        $targetWorkDays = max(1, $targetWorkDays); // hindari pembagi nol
+
+        // Komponen gaji pokok yang dibayar (gross - lembur)
+        $baseComponentPaid = max(0, ($record->total_pay ?? 0) - $overtimePay);
+        $dailyBaseRate = $targetWorkDays > 0 ? $baseSalary / $targetWorkDays : 0;
+        $effectivePaidDays = $dailyBaseRate > 0 ? round($baseComponentPaid / $dailyBaseRate, 2) : 0;
+
+        $grossIncome = $baseComponentPaid + $overtimePay + $bonus;
+        $totalDeductions = $leaveDeduction + $otherDeductions + $taxDeduction;
+        $netPay = $grossIncome - $totalDeductions;
+    @endphp
+
     <div class="header">
         <div>
             <h1>Slip Gaji</h1>
@@ -60,8 +108,8 @@
 
     <div class="card">
         <div class="meta">
-            <div><span>Periode</span>{{ optional($record->payrollPeriod)->start_date?->format('d M Y') }} - {{ optional($record->payrollPeriod)->end_date?->format('d M Y') }}</div>
-            <div><span>Dibayar</span>{{ $record->paid_at ? $record->paid_at->format('d M Y') : '-' }}</div>
+            <div><span>Periode</span>{{ $formatDate(optional($record->payrollPeriod)->start_date) }} - {{ $formatDate(optional($record->payrollPeriod)->end_date) }}</div>
+            <div><span>Dibayar</span>{{ $record->paid_at ? $formatDate($record->paid_at) : '-' }}</div>
             <div><span>Metode</span>{{ $record->payment_method ?? '-' }}</div>
             <div><span>Referensi</span>{{ $record->payment_reference ?? '-' }}</div>
         </div>
@@ -73,34 +121,91 @@
             <tbody>
                 <tr>
                     <td>Gaji Pokok</td>
-                    <td>{{ number_format($record->base_salary, 0, ',', '.') }}</td>
+                    <td>{{ number_format($baseSalary, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td>Hari Kalender (periode)</td>
+                    <td>{{ $periodDays }} hari</td>
+                </tr>
+                <tr>
+                    <td>Hari Kerja (Senin–Jumat)</td>
+                    <td>{{ $targetWorkDays }} hari</td>
+                </tr>
+                <tr>
+                    <td>Rate Gaji per Hari (Gaji Pokok ÷ Hari Kerja)</td>
+                    <td>{{ number_format($dailyBaseRate, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td>Hari Dibayar (Prorata)</td>
+                    <td>{{ $effectivePaidDays }} hari</td>
+                </tr>
+                <tr class="total">
+                    <td>Gaji Pokok Dibayar (Rate per Hari × Hari Dibayar)</td>
+                    <td>{{ number_format($baseComponentPaid, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td>Lembur</td>
-                    <td>{{ number_format($record->overtime_pay, 0, ',', '.') }}</td>
+                    <td>{{ number_format($overtimePay, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td>Tunjangan / Bonus</td>
-                    <td>{{ number_format($record->bonus, 0, ',', '.') }}</td>
+                    <td>{{ number_format($bonus, 0, ',', '.') }}</td>
+                </tr>
+                <tr class="total">
+                    <td>Total Pendapatan</td>
+                    <td>{{ number_format($grossIncome, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td>Potongan Cuti/Izin</td>
-                    <td>{{ number_format($record->leave_deduction, 0, ',', '.') }}</td>
+                    <td>{{ number_format($leaveDeduction, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td>Potongan Lain</td>
-                    <td>{{ number_format($record->other_deductions, 0, ',', '.') }}</td>
+                    <td>{{ number_format($otherDeductions, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td>Pajak</td>
-                    <td>{{ number_format($record->tax_deduction, 0, ',', '.') }}</td>
+                    <td>{{ number_format($taxDeduction, 0, ',', '.') }}</td>
+                </tr>
+                <tr class="total">
+                    <td>Total Potongan</td>
+                    <td>{{ number_format($totalDeductions, 0, ',', '.') }}</td>
                 </tr>
                 <tr class="total">
                     <td>Net Diterima</td>
-                    <td>{{ number_format($record->total_pay - $record->tax_deduction - $record->other_deductions, 0, ',', '.') }}</td>
+                    <td>{{ number_format($netPay, 0, ',', '.') }}</td>
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="card">
+        <h3>Detail Perhitungan Net</h3>
+        <table>
+            <tbody>
+                <tr>
+                    <td>Gaji Pokok Dibayar (prorata)</td>
+                    <td>{{ number_format($baseComponentPaid, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td>Tambahan (Lembur + Bonus)</td>
+                    <td>{{ number_format($overtimePay + $bonus, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td>Pendapatan (Gaji Pokok + Lembur + Bonus)</td>
+                    <td>{{ number_format($grossIncome, 0, ',', '.') }}</td>
+                </tr>
+                <tr>
+                    <td>Potongan (Cuti/Izin + Potongan Lain + Pajak)</td>
+                    <td>- {{ number_format($totalDeductions, 0, ',', '.') }}</td>
+                </tr>
+                <tr class="total">
+                    <td>Net Diterima</td>
+                    <td>{{ number_format($netPay, 0, ',', '.') }}</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="muted" style="margin-top:8px;">Perhitungan otomatis berdasarkan data periode dan konfigurasi outlet.</p>
     </div>
 
     <div class="card">
@@ -111,7 +216,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
+                        <th>Tanggal ({{ $tz }})</th>
                         <th>Menit</th>
                         <th>Type</th>
                     </tr>
@@ -119,7 +224,7 @@
                 <tbody>
                     @foreach($record->overtimeRecords as $overtime)
                         <tr>
-                            <td>{{ \Carbon\Carbon::parse($overtime->date)->format('d M Y') }}</td>
+                            <td>{{ $formatDate($overtime->date) }}</td>
                             <td>{{ $overtime->overtime_minutes }} menit</td>
                             <td>{{ ucfirst($overtime->overtime_type) }}</td>
                         </tr>
@@ -138,12 +243,40 @@
 
     <div class="card footer">
         <div>
-            <p class="muted">Dicetak pada {{ now()->format('d M Y H:i') }}</p>
+            <p class="muted">Dicetak pada {{ $formatDateTime(now()) }}</p>
         </div>
         <div class="actions no-print">
-            <a href="#" class="btn secondary" onclick="window.history.back();return false;">Kembali</a>
+            <a href="#" class="btn secondary" onclick="return handleClose(event);">Close</a>
             <a href="#" class="btn" onclick="window.print();return false;">Cetak</a>
         </div>
     </div>
+
+    <script>
+        function handleClose(event) {
+            event.preventDefault();
+
+            // If opened as a popup/tab from another window, close directly
+            if (window.opener && !window.opener.closed) {
+                window.close();
+                return false;
+            }
+
+            // Fallback: go back if there is history
+            if (window.history.length > 1) {
+                window.history.back();
+                return false;
+            }
+
+            // Final fallback: navigate to previous page if known, else home
+            const ref = document.referrer;
+            if (ref) {
+                window.location.href = ref;
+            } else {
+                window.location.href = '/';
+            }
+
+            return false;
+        }
+    </script>
 </body>
 </html>
