@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class EmployeeManagementController extends Controller
 {
@@ -289,6 +290,13 @@ class EmployeeManagementController extends Controller
         // Ensure owner can only resend to employees from their outlets
         if (!$employee->outlet || $employee->outlet->owner_id !== $user->id) {
             abort(403, 'Unauthorized');
+        }
+
+        // Prevent resending/resetting credentials when the employee is already verified
+        if ($employee->hasVerifiedEmail()) {
+            throw ValidationException::withMessages([
+                'resend_email' => 'Karyawan sudah memverifikasi email, tidak perlu kirim ulang.',
+            ]);
         }
 
         // Generate new temporary password
